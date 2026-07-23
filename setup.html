@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Setup Admin | ระบบเช็คชื่อ นศท.</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+  body { background: linear-gradient(135deg, #17382a 0%, #159a61 100%); min-height: 100vh; }
+</style>
+</head>
+<body class="font-sans flex items-center justify-center p-4">
+  <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 relative overflow-hidden transition-all duration-300">
+    <div class="absolute top-0 right-0 p-4 opacity-10">
+      <div class="text-6xl font-black italic">R</div>
+    </div>
+    
+    <div class="grid h-16 w-16 place-items-center rounded-2xl bg-forest-600 text-3xl font-black text-white shadow-lg shadow-emerald-600/30 mx-auto mb-6">⚙️</div>
+    
+    <div class="text-center mb-6">
+      <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">ตั้งค่าระบบครั้งแรก</h1>
+      <p class="text-sm text-slate-500 mt-2 font-medium">สร้างบัญชี Admin สำหรับเข้าใช้งานระบบ</p>
+    </div>
+
+    <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 flex gap-3 text-amber-800 mb-6">
+      <span class="text-lg">⚠️</span>
+      <div class="text-xs">
+        <strong class="block mb-1 font-bold">ใช้เพียงครั้งเดียว!</strong>
+        หลังสร้าง Admin สำเร็จแล้ว ให้ลบหน้านี้ออก หรือลบออกจาก server เพื่อความปลอดภัย
+      </div>
+    </div>
+
+    <div id="error-box" class="hidden mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-600 flex items-center gap-2">
+      <span>❌</span><span id="error-text"></span>
+    </div>
+    
+    <div id="success-box" class="hidden mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-600 flex items-center gap-2">
+      <span>✅</span><span id="success-text"></span>
+    </div>
+
+    <!-- Step Indicator -->
+    <div class="flex gap-2 mb-8 items-center" id="steps-container">
+      <div class="flex-1 flex flex-col items-center">
+        <div id="step1-dot" class="grid h-8 w-8 place-items-center rounded-full border-2 border-forest-600 bg-emerald-50 text-xs font-black text-forest-600 transition-all z-10 relative">1</div>
+        <div class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wide mt-2">ข้อมูล</div>
+      </div>
+      <div class="h-0.5 flex-1 bg-slate-100 -mt-5"></div>
+      <div class="flex-1 flex flex-col items-center">
+        <div id="step2-dot" class="grid h-8 w-8 place-items-center rounded-full border-2 border-slate-200 bg-white text-xs font-black text-slate-400 transition-all z-10 relative">2</div>
+        <div class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide mt-2">สร้าง Auth</div>
+      </div>
+      <div class="h-0.5 flex-1 bg-slate-100 -mt-5"></div>
+      <div class="flex-1 flex flex-col items-center">
+        <div id="step3-dot" class="grid h-8 w-8 place-items-center rounded-full border-2 border-slate-200 bg-white text-xs font-black text-slate-400 transition-all z-10 relative">3</div>
+        <div class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide mt-2">บันทึก DB</div>
+      </div>
+    </div>
+
+    <form id="setup-form">
+      <div class="flex flex-col gap-4">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide">รหัสผู้ดูแล <span class="text-rose-500">*</span></label>
+            <input id="admin-id" placeholder="เช่น ADMIN001" required class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition bg-slate-50">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide">ชื่อ-นามสกุล <span class="text-rose-500">*</span></label>
+            <input id="admin-name" placeholder="ชื่อ นามสกุล" required class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition bg-slate-50">
+          </div>
+        </div>
+
+        <div>
+          <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide">วัน/เดือน/ปีเกิด (ใช้เป็นรหัสผ่าน) <span class="text-rose-500">*</span></label>
+          <input type="date" id="admin-birth" required class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition bg-slate-50">
+          <p class="text-xs font-medium text-slate-500 mt-1.5 ml-1">รหัสผ่านจะเป็น <strong id="pw-preview" class="text-sky-600 font-bold bg-sky-50 px-1 py-0.5 rounded border border-sky-100">--</strong> (DDMMYYYY)</p>
+        </div>
+
+        <div>
+          <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide">ศูนย์ / สังกัด</label>
+          <input id="admin-center" placeholder="เช่น ศูนย์การฝึกนักศึกษาวิชาทหาร" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition bg-slate-50">
+        </div>
+
+        <div>
+          <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide">บทบาท</label>
+          <select id="admin-role" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition bg-slate-50">
+            <option value="6">ระดับ 6: แอดมินระบบ (System Admin)</option>
+            <option value="5">ระดับ 5: หัวหน้าชุดครูฝึก (ผู้อนุมัติใบลา)</option>
+            <option value="4">ระดับ 4: กองพัน / ครู</option>
+            <option value="3">ระดับ 3: กองร้อย</option>
+            <option value="2">ระดับ 2: หัวหน้าหมวด</option>
+          </select>
+        </div>
+
+        <div class="border-t border-emerald-950/5 my-2"></div>
+
+        <button type="submit" id="create-btn" class="w-full rounded-2xl bg-forest-600 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-forest-700 hover:shadow-emerald-600/40 hover:-translate-y-0.5 flex items-center justify-center gap-2">
+          <span>🚀</span> สร้างบัญชีและเริ่มใช้งาน
+        </button>
+      </div>
+    </form>
+
+    <div id="done-section" class="hidden text-center mt-2">
+      <div class="text-6xl mb-4 animate-bounce">🎉</div>
+      <h2 class="text-2xl font-black text-emerald-600 mb-6">สร้างสำเร็จ!</h2>
+      
+      <div class="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-5 mb-6 text-left">
+        <div class="flex flex-col gap-3 text-sm">
+          <div class="flex justify-between items-center border-b border-emerald-950/5 pb-2">
+            <span class="font-bold text-slate-500">รหัส</span>
+            <strong id="done-id" class="text-forest-900">--</strong>
+          </div>
+          <div class="flex justify-between items-center border-b border-emerald-950/5 pb-2">
+            <span class="font-bold text-slate-500">รหัสผ่าน</span>
+            <strong id="done-pw" class="text-sky-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">--</strong>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-slate-500">บทบาท</span>
+            <strong class="text-forest-900">ผู้ดูแลระบบ</strong>
+          </div>
+        </div>
+      </div>
+      
+      <a href="index.html" class="inline-flex w-full rounded-2xl bg-forest-600 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-forest-700 justify-center items-center gap-2">
+        เข้าสู่ระบบ <span>→</span>
+      </a>
+      
+      <p class="text-xs font-bold text-rose-500 mt-5 bg-rose-50 py-2 px-3 rounded-lg border border-rose-100 inline-block">
+        ⚠️ กรุณาลบไฟล์ setup.html ออกหลังใช้งาน
+      </p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-xl bg-forest-900 px-4 py-3 text-sm font-bold text-white shadow-xl">
+    <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-400 text-[.65rem] text-forest-900">✓</span>
+    <span id="toastText">ดำเนินการสำเร็จ</span>
+  </div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js?v=2"></script>
+<script src="js/datepicker.js"></script>
+<script>
+// ─── Auth Guard (Admin only) ────────────────────────────────
+auth.onAuthStateChanged(async function(user) {
+  if (!user) { return; } // Allows setting up if not logged in
+  var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+  if (snap.exists && snap.data().role !== ROLES.ADMIN) {
+    window.location.href = 'dashboard.html';
+    return;
+  }
+});
+
+// Password preview
+document.getElementById('admin-birth').addEventListener('change', function() {
+  if (!this.value) return;
+  var [y,m,d] = this.value.split('-');
+  document.getElementById('pw-preview').textContent = `${d}${m}${y}`;
+});
+
+document.getElementById('setup-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  var btn  = document.getElementById('create-btn');
+  var id   = document.getElementById('admin-id').value.trim();
+  var name = document.getElementById('admin-name').value.trim();
+  var birth= document.getElementById('admin-birth').value;
+  var role = parseInt(document.getElementById('admin-role').value);
+  var center = document.getElementById('admin-center').value.trim();
+
+  if (!id || !name || !birth) {
+    showErr('กรุณากรอกข้อมูลให้ครบ'); return;
+  }
+
+  var [y,m,d] = birth.split('-');
+  var password = `${d}${m}${y}`;
+  var email    = `${id.toLowerCase()}@nstda.system`;
+
+  hideErr();
+  showLoading(btn, 'กำลังสร้าง...');
+  updateStep(1, 'active');
+
+  try {
+    // Step 1: Create Firebase Auth account
+    showLoading(btn, 'สร้าง Auth...');
+    updateStep(2, 'active');
+    var cred = await auth.createUserWithEmailAndPassword(email, password);
+    var uid  = cred.user.uid;
+
+    // Step 2: Save profile to Firestore
+    showLoading(btn, 'บันทึก Profile...');
+    updateStep(3, 'active');
+    await db.collection('users').doc(uid).set({
+      studentId: id,
+      name,
+      role,
+      birthdate: birth,
+      center:    center || '',
+      company:   '',
+      platoon:   '',
+      school:    '',
+      email,
+      faceDescriptor:  null,
+      profilePhotoUrl: '',
+      active:    true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Done!
+    updateStep(1,'done'); updateStep(2,'done'); updateStep(3,'done');
+    document.getElementById('steps-container').classList.add('hidden');
+    document.getElementById('setup-form').classList.add('hidden');
+    document.getElementById('done-section').classList.remove('hidden');
+    document.getElementById('done-id').textContent = id;
+    document.getElementById('done-pw').textContent = password;
+    showToast('สร้างบัญชี Admin สำเร็จ!');
+
+  } catch(err) {
+    updateStep(2,'error');
+    var msg = err.message;
+    if (err.code === 'auth/email-already-in-use') msg = 'รหัสนี้มีในระบบแล้ว กรุณาเปลี่ยนรหัส';
+    if (err.code === 'auth/operation-not-allowed') msg = 'กรุณาเปิดใช้งาน Email/Password ใน Firebase Console ก่อน';
+    showErr(msg);
+    hideLoading(btn);
+  }
+});
+
+function showErr(msg) {
+  document.getElementById('error-box').classList.remove('hidden');
+  document.getElementById('error-text').textContent = msg;
+}
+function hideErr() { document.getElementById('error-box').classList.add('hidden'); }
+
+function showLoading(btn, text) {
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="h-5 w-5 animate-spin text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg> ${text}`;
+}
+function hideLoading(btn) {
+  btn.disabled = false;
+  btn.innerHTML = '<span>🚀</span> สร้างบัญชีและเริ่มใช้งาน';
+}
+
+function updateStep(n, state) {
+  var el = document.getElementById('step'+n+'-dot');
+  var txt = el.nextElementSibling;
+  
+  // reset
+  el.className = 'grid h-8 w-8 place-items-center rounded-full border-2 transition-all z-10 relative text-xs font-black';
+  txt.className = 'text-[0.65rem] font-bold uppercase tracking-wide mt-2 transition-colors';
+  
+  if (state === 'active') {
+    el.classList.add('border-forest-600', 'bg-emerald-50', 'text-forest-600');
+    txt.classList.add('text-forest-600');
+  } else if (state === 'done') {
+    el.classList.add('border-emerald-500', 'bg-emerald-500', 'text-white');
+    txt.classList.add('text-emerald-600');
+    el.textContent = '✓';
+  } else if (state === 'error') {
+    el.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-600');
+    txt.classList.add('text-rose-600');
+    el.textContent = '✕';
+  } else {
+    // pending
+    el.classList.add('border-slate-200', 'bg-white', 'text-slate-400');
+    txt.classList.add('text-slate-400');
+  }
+}
+</script>
+<script src="js/auth.js"></script>
+</body>
+</html>

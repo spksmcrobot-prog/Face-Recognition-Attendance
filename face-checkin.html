@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เช็คชื่อด้วย Face AI | ระบบเช็คชื่อ นศท.</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<style>
+  .step-dot.active { background: #159a61 !important; color: white !important; }
+  .step-dot.done { background: #10b981 !important; color: white !important; }
+  .dot-red { background: #ef4444; }
+  .dot-yellow { background: #eab308; }
+  .dot-green { background: #10b981; }
+  .dot-gray { background: #94a3b8; }
+</style>
+</head>
+<body class="bg-[#f6faf8] text-[#17382a] font-sans">
+  <div id="sidebackdrop" class="fixed inset-0 z-30 hidden bg-slate-900/25 backdrop-blur-[1px]" onclick="toggleSidebar()"></div>
+  
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-[17.25rem] flex-col border-r border-emerald-950/5 bg-white px-4 py-5 transition-transform duration-250 lg:translate-x-0 -translate-x-full">
+    <div class="mb-8 flex items-center gap-3 px-2">
+      <img src="https://mstc23.rta.mi.th/amc23/img/23png.png" alt="Logo" class="h-10 w-10 object-contain rounded-xl drop-shadow-md">
+      <div>
+        <p class="text-[1.05rem] font-bold tracking-tight text-forest-900">รด. Check</p>
+        <p class="text-[.68rem] font-medium text-slate-400">ศูนย์เช็คเวลาเรียน</p>
+      </div>
+    </div>
+    <nav id="sidebar-nav" class="space-y-1"></nav>
+    <div class="mt-auto rounded-2xl bg-forest-50 p-3.5 mb-3 hidden" id="sidebar-user-card">
+       <div class="flex items-center gap-2 text-[.72rem] font-bold text-forest-700">
+         <div class="grid h-7 w-7 place-items-center rounded-lg bg-forest-100 text-[.62rem] font-black text-forest-700" id="sidebar-avatar">?</div>
+         <div>
+            <div id="sidebar-name" class="truncate w-[140px]">--</div>
+            <div id="sidebar-role" class="text-[0.65rem] text-forest-600/80">--</div>
+         </div>
+       </div>
+    </div>
+    <button class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:text-red-500" onclick="logout()">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 00-2-2h-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> ออกจากระบบ
+    </button>
+  </aside>
+
+  <main class="min-h-screen lg:ml-[17.25rem]">
+    <header class="sticky top-0 z-20 flex h-[4.7rem] items-center justify-between border-b border-emerald-950/5 bg-[#f6faf8]/90 px-4 backdrop-blur-md sm:px-7 lg:px-9">
+      <div class="flex items-center gap-3">
+        <button class="icon-btn lg:hidden" id="menu-btn" aria-label="เปิดเมนู">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div>
+          <p id="page-heading" class="text-base font-bold text-forest-900 sm:text-lg">เช็คชื่อเข้าเรียน (Face AI)</p>
+          <p id="date-top" class="hidden text-xs text-slate-400 sm:block">--</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <a href="dashboard.html" class="hidden sm:flex text-xs font-bold text-forest-600 hover:underline mr-2">← กลับหน้าหลัก</a>
+        <a href="midday-check.html" class="inline-flex items-center gap-2 rounded-xl border border-emerald-100 bg-forest-50 px-3 py-2 text-xs font-semibold text-forest-700 transition hover:bg-forest-100">เช็คยอดระหว่างวัน</a>
+        <div id="topbar-user" class="relative"></div>
+      </div>
+    </header>
+    
+    <div class="mx-auto max-w-[1440px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8" id="page-body">
+      
+      <!-- Loading state -->
+      <div id="loading-state" class="flex flex-col items-center justify-center min-h-[50vh] text-slate-400">
+        <svg class="h-10 w-10 animate-spin text-forest-600 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg>
+        <p id="loading-msg" class="font-bold text-forest-900">กำลังโหลด AI Model...</p>
+        <div class="mt-4 h-1.5 w-64 overflow-hidden rounded-full bg-slate-200">
+          <div class="h-full bg-forest-600 transition-all duration-300" id="load-progress" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- All done state -->
+      <div id="all-done-state" class="hidden flex flex-col items-center justify-center min-h-[50vh]">
+        <div style="font-size:5rem;margin-bottom:16px">🎉</div>
+        <div class="rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700 mb-4">✅ เช็คชื่อครบทั้งวันแล้ว</div>
+        <h2 class="text-2xl font-extrabold text-forest-900 mb-2">เสร็จเรียบร้อย!</h2>
+        <div class="card p-5 w-full max-w-sm mt-4">
+          <div class="flex justify-between items-center py-2 border-b border-slate-50"><span class="text-sm text-slate-500">เช็คเข้า</span><span class="font-bold text-emerald-600" id="done-checkin-time">--</span></div>
+          <div class="flex justify-between items-center py-2"><span class="text-sm text-slate-500">เช็คออก</span><span class="font-bold text-amber-600" id="done-checkout-time">--</span></div>
+        </div>
+        <div class="mt-8 flex gap-3">
+          <a href="dashboard.html" class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-50">← กลับหน้าหลัก</a>
+          <a href="midday-check.html" class="rounded-xl bg-forest-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-forest-700">เช็คยอดระหว่างวัน →</a>
+        </div>
+      </div>
+
+      <!-- No face registered -->
+      <div id="no-face-state" class="hidden flex flex-col items-center justify-center min-h-[50vh]">
+        <div style="font-size:4.5rem;margin-bottom:16px">😶</div>
+        <h2 class="text-2xl font-extrabold text-forest-900 mb-2">ยังไม่ได้ลงทะเบียนใบหน้า</h2>
+        <p class="text-sm text-slate-500 mb-6">กรุณาติดต่อผู้ดูแลระบบเพื่อลงทะเบียน Face ID</p>
+        <a href="dashboard.html" class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-50">← กลับหน้าหลัก</a>
+      </div>
+
+      <!-- Success Overlay -->
+      <div id="success-overlay" class="hidden flex flex-col items-center justify-center min-h-[50vh]">
+        <div style="font-size:5rem;margin-bottom:20px;animation:enter .5s ease" id="success-icon">✅</div>
+        <h2 class="text-2xl font-extrabold text-emerald-600" id="success-title">เช็คชื่อสำเร็จ!</h2>
+        <p class="text-sm text-slate-500 mt-2 font-bold" id="success-time"></p>
+        <p id="success-conf" class="text-xs text-slate-400 mt-1"></p>
+        <div class="mt-8 flex gap-3" id="success-actions"></div>
+      </div>
+
+      <!-- Main check-in UI -->
+      <div id="checkin-ui" class="hidden section active">
+        <div class="mb-6">
+          <p class="mb-1 text-sm font-bold text-forest-600" id="date-card">--</p>
+          <h1 class="text-2xl font-extrabold tracking-tight text-forest-900" id="page-title-top">เช็คชื่อเข้าเรียน (Face AI)</h1>
+          <p class="mt-2 text-sm text-slate-500">ยืนยันตัวตนด้วยใบหน้า และตรวจสอบพื้นที่ฝึกที่ได้รับอนุญาต</p>
+        </div>
+        
+        <div class="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
+          <!-- Camera Column -->
+          <div class="card overflow-hidden flex flex-col">
+            <div class="bg-gradient-to-br from-forest-700 to-emerald-600 px-6 py-5 sm:py-6 text-white" id="status-gradient">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-[0.7rem] font-bold text-emerald-100 uppercase tracking-wider">สถานะปัจจุบัน</p>
+                  <h2 id="current-mode-badge" class="mt-1 text-xl sm:text-2xl font-extrabold">🟢 กำลังเช็คเข้า</h2>
+                  <div class="flex flex-wrap gap-2 mt-3">
+                    <span class="rounded-full bg-white/20 px-2 py-1 text-[0.65rem] font-bold" id="badge-checkin-status">⏳ ยังไม่ได้เช็คเข้า</span>
+                    <span class="rounded-full bg-white/20 px-2 py-1 text-[0.65rem] font-bold" id="badge-checkout-status">⏳ ยังไม่ได้เช็คออก</span>
+                  </div>
+                </div>
+                <div class="grid h-12 px-3 place-items-center rounded-xl bg-white/15">
+                  <div class="text-lg font-bold tabular-nums tracking-tight" id="clock">--:--:--</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="p-5 sm:p-6 flex-1 flex flex-col">
+              <div class="relative mx-auto h-[280px] w-full max-w-[400px] overflow-hidden rounded-2xl bg-slate-900 shadow-inner" id="camera-wrap">
+                <video class="camera-video absolute inset-0 w-full h-full object-cover" id="camera-video" playsinline muted></video>
+                <canvas class="camera-canvas absolute inset-0 w-full h-full object-cover pointer-events-none z-10" id="camera-canvas"></canvas>
+                <div class="face-frame absolute inset-0 z-20 pointer-events-none" id="face-frame"></div>
+                <div class="scan-line absolute inset-0 z-20 hidden pointer-events-none" id="scan-line"></div>
+                
+                <div class="absolute bottom-3 left-3 rounded-lg bg-black/50 backdrop-blur-sm px-2.5 py-1.5 text-[.65rem] font-bold text-white z-30 flex gap-2 items-center">
+                   <span class="status-dot dot-yellow" id="dot-face"></span>
+                   <span id="face-msg">รอตรวจสอบ...</span>
+                </div>
+                <div class="absolute bottom-3 right-3 rounded-lg bg-black/50 backdrop-blur-sm px-2.5 py-1.5 text-[.65rem] font-bold text-white z-30" id="cam-status">
+                   กำลังตรวจสอบใบหน้า
+                </div>
+              </div>
+              
+              <div class="mt-6 grid gap-3 border-t border-emerald-950/5 pt-5 text-sm sm:grid-cols-2">
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="status-dot dot-yellow" id="dot-loc"></span>
+                    <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">พิกัดสถานที่</p>
+                  </div>
+                  <p class="mt-1 font-bold text-forest-900" id="location-text">กำลังตรวจสอบพิกัด...</p>
+                </div>
+                <div id="confidence-wrap" class="hidden">
+                  <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">ความมั่นใจใบหน้า (<span id="conf-pct">0%</span>)</p>
+                  <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                     <div class="h-full bg-emerald-500 transition-all duration-200" id="conf-bar" style="width:0%"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="mode-switch" class="mt-6 grid grid-cols-2 gap-3">
+                <button id="mode-checkin-btn" type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-forest-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400" onclick="setMode('checkin')">⏰ เช็คเข้า</button>
+                <button id="mode-checkout-btn" type="button" class="rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm font-bold text-amber-700 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400" onclick="setMode('checkout')">🏁 เช็คออก</button>
+              </div>
+
+              <div class="mt-6 flex-1 flex flex-col justify-end">
+                <button id="checkin-btn" class="w-full rounded-xl bg-forest-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" disabled>
+                  <span>⏳</span> รอยืนยันใบหน้า...
+                </button>
+                <button id="retry-btn" class="mt-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50 transition hidden" onclick="retryCamera()">
+                  🔄 ลองใหม่อีกครั้ง
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Info Column -->
+          <div class="space-y-5">
+            <!-- Student Info -->
+            <div class="card p-5 sm:p-6" id="student-info-card">
+              <h2 class="font-bold text-forest-900">ข้อมูล นศท.</h2>
+              <div class="mt-5 flex gap-4 items-center border-b border-emerald-950/5 pb-4">
+                <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-forest-100 text-sm font-black text-forest-700 overflow-hidden" id="si-avatar">?</div>
+                <div>
+                  <p class="text-sm font-bold text-forest-900" id="si-name">--</p>
+                  <p class="mt-0.5 text-[0.7rem] text-slate-500 font-medium" id="si-id">--</p>
+                </div>
+              </div>
+              <div class="mt-4 space-y-3">
+                <div class="flex justify-between border-b border-slate-50 pb-2"><span class="text-xs text-slate-500">หมวด</span><span class="text-sm font-bold text-forest-900" id="si-platoon">-</span></div>
+                <div class="flex justify-between border-b border-slate-50 pb-2"><span class="text-xs text-slate-500">ชั้นปี</span><span class="text-sm font-bold text-forest-900" id="si-company">-</span></div>
+                <div class="flex justify-between pb-1"><span class="text-xs text-slate-500">โรงเรียน</span><span class="text-sm font-bold text-forest-900 text-right max-w-[150px] truncate" id="si-school" title="">-</span></div>
+              </div>
+            </div>
+            
+            <!-- Step Indicator -->
+            <div class="card p-5 sm:p-6" id="step-indicator" style="display:none;">
+              <h2 class="font-bold text-forest-900 mb-5">ลำดับการเช็คชื่อ</h2>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 text-center">
+                  <div class="step-dot mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-400" id="step-1">1</div>
+                  <p class="mt-2 text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">เช็คเข้า</p>
+                </div>
+                <div class="h-0.5 w-10 bg-slate-100"></div>
+                <div class="flex-1 text-center">
+                  <div class="step-dot mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-400" id="step-2">2</div>
+                  <p class="mt-2 text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">เช็คออก</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+<div id="toast" class="toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-xl bg-forest-900 px-4 py-3 text-sm font-bold text-white shadow-xl">
+  <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-400 text-[.65rem] text-forest-900">✓</span>
+  <span id="toastText">ดำเนินการสำเร็จ</span>
+</div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js?v=2"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/router.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/attendance.js"></script>
+<script src="js/face-recognition.js"></script>
+<script>
+var currentUser    = null;
+var cameraStream   = null;
+var locationResult = null;
+var faceVerified   = false;
+var locationValid  = false;
+var verifyInterval = null;
+var currentMode    = null; // 'checkin' | 'checkout'
+var canCheckIn     = false;
+var canCheckOut    = false;
+
+// Clock
+setInterval(function() {
+  var el = document.getElementById('clock');
+  if (el) el.textContent = new Date().toLocaleTimeString('th-TH');
+}, 1000);
+document.getElementById('date-top').textContent =
+  new Date().toLocaleDateString('th-TH',{weekday:'short',month:'short',day:'numeric'});
+document.getElementById('date-card').textContent =
+  new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+// ─── Init ─────────────────────────────────────────────────
+auth.onAuthStateChanged(async function(user) {
+  if (!user) { window.location.href='index.html'; return; }
+  var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+  if (!snap.exists) { auth.signOut(); window.location.href='index.html'; return; }
+  currentUser = Object.assign({ uid: user.uid }, snap.data());
+
+  renderSidebar(currentUser);
+  renderTopbarUser(currentUser);
+  initSidebar();
+  
+  document.getElementById('sidebar-name').textContent = currentUser.name || currentUser.studentId;
+  document.getElementById('sidebar-role').textContent = ROLE_NAMES[currentUser.role];
+  document.getElementById('sidebar-user-card').classList.remove('hidden');
+  
+  populateStudentInfo(currentUser);
+
+  // ตรวจสอบสถานะวันนี้
+  var existing = await getTodayAttendance(user.uid);
+
+  canCheckIn = !existing || !existing.checkInTime;
+  canCheckOut = !!existing && !!existing.checkInTime && !existing.checkOutTime;
+
+  if (canCheckIn) {
+    currentMode = 'checkin';
+  }
+  if (canCheckOut && !currentMode) {
+    currentMode = 'checkout';
+  }
+
+  if (!canCheckIn && !canCheckOut) {
+    // ครบทั้งสองรอบแล้ว
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('all-done-state').classList.remove('hidden');
+    document.getElementById('done-checkin-time').textContent  = formatTime(existing.checkInTime);
+    document.getElementById('done-checkout-time').textContent = formatTime(existing.checkOutTime);
+    return;
+  }
+
+  updateStatusBadges(existing);
+  applyMode(currentMode);
+  updateModeButtons();
+
+  // ตรวจสอบว่าลงทะเบียนใบหน้าหรือยัง
+  if (!currentUser.faceDescriptor) {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('no-face-state').classList.remove('hidden');
+    return;
+  }
+
+  await initCheckin();
+});
+
+function applyMode(mode) {
+  var badge = document.getElementById('current-mode-badge');
+  var btn   = document.getElementById('checkin-btn');
+  document.getElementById('step-indicator').style.display = 'block';
+  var gradient = document.getElementById('status-gradient');
+
+  if (mode === 'checkin') {
+    badge.textContent = '🟢 กำลังเช็คเข้า';
+    btn.innerHTML     = '<span>👤</span> ยืนยันเช็คเข้า';
+    document.getElementById('page-title-top').textContent = 'เช็คเข้าเรียน (Face AI)';
+    document.getElementById('step-1').className = 'step-dot mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold active';
+    document.getElementById('step-2').className = 'step-dot mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold bg-slate-100 text-slate-400';
+    btn.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+    btn.classList.add('bg-forest-600', 'hover:bg-forest-700');
+    gradient.classList.add('from-forest-700', 'to-emerald-600');
+    gradient.classList.remove('from-amber-600', 'to-orange-500');
+  } else {
+    badge.textContent   = '🟡 กำลังเช็คออก';
+    btn.innerHTML       = '<span>👋</span> ยืนยันเช็คออก';
+    btn.classList.remove('bg-forest-600', 'hover:bg-forest-700');
+    btn.classList.add('bg-amber-500', 'hover:bg-amber-600');
+    gradient.classList.add('from-amber-600', 'to-orange-500');
+    gradient.classList.remove('from-forest-700', 'to-emerald-600');
+    document.getElementById('page-title-top').textContent = 'เช็คออกเลิกเรียน (Face AI)';
+    document.getElementById('step-1').className = 'step-dot mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold done';
+    document.getElementById('step-2').className = 'step-dot mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold active';
+  }
+}
+
+function setMode(mode) {
+  if ((mode === 'checkin' && !canCheckIn) || (mode === 'checkout' && !canCheckOut)) return;
+  currentMode = mode;
+  applyMode(mode);
+  updateModeButtons();
+  updateCheckinButton();
+}
+
+function updateModeButtons() {
+  var checkinToggle = document.getElementById('mode-checkin-btn');
+  var checkoutToggle = document.getElementById('mode-checkout-btn');
+  if (!checkinToggle || !checkoutToggle) return;
+
+  checkinToggle.disabled = !canCheckIn;
+  checkoutToggle.disabled = !canCheckOut;
+
+  checkinToggle.classList.toggle('bg-forest-600', currentMode === 'checkin');
+  checkinToggle.classList.toggle('text-white', currentMode === 'checkin');
+  checkinToggle.classList.toggle('border-forest-600', currentMode === 'checkin');
+  checkinToggle.classList.toggle('hover:bg-emerald-50', currentMode !== 'checkin');
+
+  checkoutToggle.classList.toggle('bg-amber-500', currentMode === 'checkout');
+  checkoutToggle.classList.toggle('text-white', currentMode === 'checkout');
+  checkoutToggle.classList.toggle('border-amber-500', currentMode === 'checkout');
+  checkoutToggle.classList.toggle('hover:bg-amber-50', currentMode !== 'checkout');
+}
+
+function updateStatusBadges(record) {
+  var inBadge = document.getElementById('badge-checkin-status');
+  var outBadge = document.getElementById('badge-checkout-status');
+  
+  if (record && record.checkInTime) {
+    inBadge.textContent = '✅ เข้า: ' + formatTime(record.checkInTime);
+    inBadge.className = 'rounded-full bg-emerald-500/20 px-2 py-1 text-xs font-bold text-emerald-100';
+  }
+  if (record && record.checkOutTime) {
+    outBadge.textContent = '✅ ออก: ' + formatTime(record.checkOutTime);
+    outBadge.className = 'rounded-full bg-emerald-500/20 px-2 py-1 text-xs font-bold text-emerald-100';
+  }
+}
+
+function populateStudentInfo(user) {
+  document.getElementById('si-name').textContent = user.name;
+  document.getElementById('si-id').textContent   = user.studentId;
+  document.getElementById('si-platoon').textContent = user.platoon || '-';
+  document.getElementById('si-company').textContent = user.company || '-';
+  
+  var schoolEl = document.getElementById('si-school');
+  schoolEl.textContent = user.school || '-';
+  schoolEl.title = user.school || '';
+
+  var avatar = document.getElementById('si-avatar');
+  if (user.profilePhotoUrl) {
+    avatar.innerHTML = `<img src="${user.profilePhotoUrl}" class="w-full h-full object-cover">`;
+  } else {
+    avatar.textContent = initials(user.name);
+  }
+}
+
+// ─── Flow ─────────────────────────────────────────────────
+async function initCheckin() {
+  updateProgress(20, 'โหลด Face API Models...');
+  try {
+    await faceapi.nets.ssdMobilenetv1.loadFromUri('models');
+    await faceapi.nets.faceLandmark68Net.loadFromUri('models');
+    await faceapi.nets.faceRecognitionNet.loadFromUri('models');
+  } catch(e) {
+    document.getElementById('loading-msg').textContent = 'โหลดโมเดลไม่สำเร็จ: ' + e.message;
+    return;
+  }
+
+  updateProgress(60, 'กำลังเปิดกล้อง...');
+  try {
+    var video = document.getElementById('camera-video');
+    cameraStream = await startCamera(video);
+  } catch(e) {
+    document.getElementById('loading-msg').textContent = 'เปิดกล้องไม่ได้: ' + e.message;
+    return;
+  }
+
+  updateProgress(80, 'กำลังตรวจสอบพิกัด...');
+  try {
+    locationResult = await checkLocation(CONFIG.CENTER_LAT, CONFIG.CENTER_LNG, CONFIG.ALLOWED_RADIUS_M);
+    locationValid = locationResult.inside;
+    var lt = document.getElementById('location-text');
+    var ld = document.getElementById('dot-loc');
+    if (locationValid) {
+      lt.textContent = '✅ อยู่ในพื้นที่ฝึก';
+      lt.className = 'mt-1 font-bold text-emerald-600';
+      ld.className = 'status-dot dot-green';
+    } else {
+      lt.textContent = '❌ อยู่นอกพื้นที่ฝึก ('+Math.round(locationResult.distance)+' ม.)';
+      lt.className = 'mt-1 font-bold text-red-500';
+      ld.className = 'status-dot dot-red';
+    }
+  } catch(e) {
+    document.getElementById('location-text').textContent = '⚠️ ไม่สามารถระบุตำแหน่งได้';
+    document.getElementById('dot-loc').className = 'status-dot dot-red';
+  }
+
+  updateProgress(100, 'พร้อมแล้ว');
+  setTimeout(() => {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('checkin-ui').classList.remove('hidden');
+    startFaceVerification();
+  }, 500);
+}
+
+function updateProgress(pct, msg) {
+  document.getElementById('load-progress').style.width = pct + '%';
+  document.getElementById('loading-msg').textContent = msg;
+}
+
+function startFaceVerification() {
+  var video = document.getElementById('camera-video');
+  var canvas = document.getElementById('camera-canvas');
+  var refDesc = Float32Array.from(Object.values(currentUser.faceDescriptor));
+
+  startDetectionLoop(video, canvas, function(desc, match, conf) {
+    document.getElementById('confidence-wrap').classList.remove('hidden');
+    document.getElementById('conf-pct').textContent = Math.round(conf) + '%';
+    document.getElementById('conf-bar').style.width = Math.round(conf) + '%';
+
+    if (match) {
+      faceVerified = true;
+      document.getElementById('cam-status').textContent = 'พบใบหน้า: ' + escapeHtml(currentUser.name);
+      document.getElementById('cam-status').className = 'absolute bottom-3 right-3 rounded-lg bg-emerald-500/80 backdrop-blur-sm px-2.5 py-1.5 text-[.65rem] font-bold text-white z-30';
+    } else {
+      faceVerified = false;
+      document.getElementById('cam-status').textContent = 'ใบหน้าไม่ตรงกับที่ลงทะเบียน';
+      document.getElementById('cam-status').className = 'absolute bottom-3 right-3 rounded-lg bg-red-500/80 backdrop-blur-sm px-2.5 py-1.5 text-[.65rem] font-bold text-white z-30';
+    }
+  }, refDesc);
+
+  verifyInterval = setInterval(autoVerify, 2000);
+}
+
+async function autoVerify() {
+  try {
+    var result = await verifyCurrentFrame();
+    if (result.match) {
+      document.getElementById('dot-face').className  = 'status-dot dot-green';
+      document.getElementById('face-msg').textContent = 'ยืนยันใบหน้าสำเร็จ';
+      document.getElementById('face-msg').className = 'text-emerald-300';
+    } else {
+      document.getElementById('dot-face').className  = 'status-dot dot-red';
+      document.getElementById('face-msg').textContent = '✗ ' + result.msg;
+      document.getElementById('face-msg').className = 'text-white';
+    }
+    updateCheckinButton();
+  } catch(e) {}
+}
+
+function updateCheckinButton() {
+  var btn = document.getElementById('checkin-btn');
+  var canCheck = faceVerified && locationValid;
+  btn.disabled = !canCheck;
+  if (canCheck) {
+    btn.innerHTML = currentMode === 'checkin'
+      ? '<span>✅</span> ยืนยันเช็คเข้า'
+      : '<span>✅</span> ยืนยันเช็คออก';
+  } else if (!faceVerified) {
+    btn.innerHTML = '<span>⏳</span> รอยืนยันใบหน้า...';
+  } else {
+    btn.innerHTML = '<span>📍</span> อยู่นอกพื้นที่';
+  }
+}
+
+document.getElementById('checkin-btn').addEventListener('click', async function() {
+  var btn = document.getElementById('checkin-btn');
+  showLoading(btn, 'กำลังบันทึก...');
+  stopDetectionLoop();
+  clearInterval(verifyInterval);
+  try {
+    var conf = document.getElementById('conf-pct').textContent;
+    if (currentMode === 'checkin') {
+      await recordCheckIn(currentUser.uid, currentUser, locationResult, faceVerified);
+    } else {
+      await recordCheckOut(currentUser.uid, locationResult, faceVerified);
+    }
+    stopCamera(document.getElementById('camera-video'));
+    document.getElementById('checkin-ui').classList.add('hidden');
+    document.getElementById('success-overlay').classList.remove('hidden');
+    showSuccessScreen(currentMode, conf);
+    showToast(currentMode === 'checkin' ? 'เช็คเข้าสำเร็จ!' : 'เช็คออกสำเร็จ!');
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+    hideLoading(btn);
+    startDetectionLoop(document.getElementById('camera-video'), document.getElementById('camera-canvas'), function(){});
+    verifyInterval = setInterval(autoVerify, 2000);
+  }
+});
+
+function showSuccessScreen(mode, conf) {
+  var now = new Date().toLocaleTimeString('th-TH');
+  if (mode === 'checkin') {
+    document.getElementById('success-icon').textContent  = '✅';
+    document.getElementById('success-title').textContent = 'เช็คเข้าสำเร็จ!';
+    document.getElementById('success-title').className   = 'text-2xl font-extrabold text-emerald-600';
+    document.getElementById('success-time').textContent  = 'เวลาเช็คเข้า: ' + now;
+    document.getElementById('success-actions').innerHTML =
+      '<a href="dashboard.html" class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-50">← กลับหน้าหลัก</a>' +
+      '<a href="midday-check.html" class="rounded-xl bg-forest-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-forest-700">เช็คยอดระหว่างวัน →</a>';
+  } else {
+    document.getElementById('success-icon').textContent  = '👋';
+    document.getElementById('success-title').textContent = 'เช็คออกสำเร็จ!';
+    document.getElementById('success-title').className   = 'text-2xl font-extrabold text-amber-500';
+    document.getElementById('success-time').textContent  = 'เวลาเช็คออก: ' + now;
+    document.getElementById('success-actions').innerHTML =
+      '<a href="dashboard.html" class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-50">← กลับหน้าหลัก</a>';
+  }
+  document.getElementById('success-conf').textContent = 'ความมั่นใจ Face AI: ' + conf;
+}
+
+function retryCamera() {
+  document.getElementById('retry-btn').classList.add('hidden');
+  document.getElementById('loading-state').classList.remove('hidden');
+  initCheckin();
+}
+</script>
+</body>
+</html>

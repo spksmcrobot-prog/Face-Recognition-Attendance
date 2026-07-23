@@ -1,0 +1,10 @@
+{
+  "name": "ระบบเช็คชื่อ นศท.",
+  "short_name": "เช็คชื่อ นศท.",
+  "description": "ระบบเช็คชื่อนักศึกษาวิชาทหารด้วย AI Face Recognition",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#070c18",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait-primary"
+}

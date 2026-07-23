@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>อนุมัติใบลา | ระบบเช็คชื่อ นศท.</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-[#f6faf8] text-[#17382a] font-sans">
+  <div id="sidebackdrop" class="fixed inset-0 z-30 hidden bg-slate-900/25 backdrop-blur-[1px]" onclick="toggleSidebar()"></div>
+  
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-[17.25rem] flex-col border-r border-emerald-950/5 bg-white px-4 py-5 transition-transform duration-250 lg:translate-x-0 -translate-x-full">
+    <div class="mb-8 flex items-center gap-3 px-2">
+      <img src="https://mstc23.rta.mi.th/amc23/img/23png.png" alt="Logo" class="h-10 w-10 object-contain rounded-xl drop-shadow-md">
+      <div>
+        <p class="text-[1.05rem] font-bold tracking-tight text-forest-900">รด. Check</p>
+        <p class="text-[.68rem] font-medium text-slate-400">ศูนย์เช็คเวลาเรียน</p>
+      </div>
+    </div>
+    <nav id="sidebar-nav" class="space-y-1"></nav>
+    <div class="mt-auto rounded-2xl bg-forest-50 p-3.5 mb-3 hidden" id="sidebar-user-card">
+       <div class="flex items-center gap-2 text-[.72rem] font-bold text-forest-700">
+         <div class="grid h-7 w-7 place-items-center rounded-lg bg-forest-100 text-[.62rem] font-black text-forest-700" id="sidebar-avatar">?</div>
+         <div>
+            <div id="sidebar-name" class="truncate w-[140px]">--</div>
+            <div id="sidebar-role" class="text-[0.65rem] text-forest-600/80">--</div>
+         </div>
+       </div>
+    </div>
+    <button class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:text-red-500" onclick="logout()">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 00-2-2h-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> ออกจากระบบ
+    </button>
+  </aside>
+
+  <main class="min-h-screen lg:ml-[17.25rem]">
+    <header class="sticky top-0 z-20 flex h-[4.7rem] items-center justify-between border-b border-emerald-950/5 bg-[#f6faf8]/90 px-4 backdrop-blur-md sm:px-7 lg:px-9">
+      <div class="flex items-center gap-3">
+        <button class="icon-btn lg:hidden" id="menu-btn" aria-label="เปิดเมนู">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div>
+          <p class="text-base font-bold text-forest-900 sm:text-lg">อนุมัติใบลา</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <a href="dashboard.html" class="hidden sm:flex text-xs font-bold text-forest-600 hover:underline mr-2">← กลับหน้าหลัก</a>
+        <div id="topbar-user" class="relative"></div>
+      </div>
+    </header>
+    
+    <div class="mx-auto max-w-[1200px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8" id="page-body">
+      
+      <div class="page-header mb-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-end justify-between">
+          <div>
+            <p class="mb-1 text-sm font-bold text-forest-600">จัดการคำร้อง</p>
+            <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">รายการใบลา</h1>
+            <p class="mt-2 text-sm text-slate-500">ตรวจสอบและอนุมัติ / ปฏิเสธใบลาของ นศท. ในหมวดของคุณ</p>
+          </div>
+          <div class="flex flex-wrap gap-2.5">
+            <select class="appearance-none rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 pr-9 text-xs sm:text-sm font-extrabold text-forest-900 shadow-sm outline-none transition-all duration-200 hover:border-emerald-400 hover:shadow-md focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 cursor-pointer bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%230e7e4f%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_0.75rem_center] bg-no-repeat" id="filter-status" onchange="loadLeaves()">
+              <option value="">⏳ สถานะทั้งหมด</option>
+              <option value="pending" selected>⏳ รอดำเนินการ</option>
+              <option value="approved">✅ อนุมัติแล้ว</option>
+              <option value="rejected">❌ ปฏิเสธแล้ว</option>
+            </select>
+            <select class="appearance-none rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 pr-9 text-xs sm:text-sm font-extrabold text-forest-900 shadow-sm outline-none transition-all duration-200 hover:border-emerald-400 hover:shadow-md focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 cursor-pointer bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%230e7e4f%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_0.75rem_center] bg-no-repeat" id="filter-type" onchange="loadLeaves()">
+              <option value="">📂 ประเภททั้งหมด</option>
+              <option value="personal">📋 ลากิจ</option>
+              <option value="sick">🏥 ลาป่วย</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="card p-5 flex items-center gap-4">
+          <div class="grid h-12 w-12 place-items-center rounded-xl bg-amber-50 text-xl text-amber-500">⏳</div>
+          <div>
+            <p class="text-2xl font-black tracking-tight text-forest-900" id="cnt-pending">--</p>
+            <p class="text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide">รอดำเนินการ</p>
+          </div>
+        </div>
+        <div class="card p-5 flex items-center gap-4">
+          <div class="grid h-12 w-12 place-items-center rounded-xl bg-emerald-50 text-xl text-emerald-500">✅</div>
+          <div>
+            <p class="text-2xl font-black tracking-tight text-forest-900" id="cnt-approved">--</p>
+            <p class="text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide">อนุมัติแล้ว</p>
+          </div>
+        </div>
+        <div class="card p-5 flex items-center gap-4">
+          <div class="grid h-12 w-12 place-items-center rounded-xl bg-rose-50 text-xl text-rose-500">❌</div>
+          <div>
+            <p class="text-2xl font-black tracking-tight text-forest-900" id="cnt-rejected">--</p>
+            <p class="text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide">ปฏิเสธ</p>
+          </div>
+        </div>
+        <div class="card p-5 flex items-center gap-4">
+          <div class="grid h-12 w-12 place-items-center rounded-xl bg-sky-50 text-xl text-sky-500">📋</div>
+          <div>
+            <p class="text-2xl font-black tracking-tight text-forest-900" id="cnt-total">--</p>
+            <p class="text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide">ทั้งหมด</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div id="leave-list" class="space-y-3">
+        <div class="flex items-center justify-center p-12 text-slate-400">
+          <svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-xl bg-forest-900 px-4 py-3 text-sm font-bold text-white shadow-xl">
+    <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-400 text-[.65rem] text-forest-900">✓</span>
+    <span id="toastText">ดำเนินการสำเร็จ</span>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="fixed inset-0 z-50 hidden place-items-center bg-slate-950/45 p-4 backdrop-blur-sm" id="detail-modal">
+    <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between border-b border-emerald-950/5 px-5 py-4 shrink-0 bg-slate-50">
+        <h2 class="font-bold text-forest-900 flex items-center gap-2">
+          <span class="text-lg">📋</span> รายละเอียดใบลา
+        </h2>
+        <button class="icon-btn !h-8 !w-8 bg-white shadow-sm border border-slate-200" onclick="closeModal('detail-modal')">✕</button>
+      </div>
+      
+      <div class="p-5 overflow-y-auto">
+        <!-- User Info -->
+        <div class="flex items-center gap-4 border-b border-emerald-950/5 pb-4 mb-4">
+          <div class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-emerald-100 text-sm font-black text-forest-700" id="md-avatar">?</div>
+          <div>
+            <h3 class="font-bold text-forest-900 text-lg" id="modal-student-name">--</h3>
+            <p class="text-xs text-slate-500 font-medium" id="md-id">--</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="rounded-xl bg-slate-50 p-3">
+            <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide mb-1">ประเภท</p>
+            <p class="text-sm font-bold text-forest-900" id="md-type">--</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 p-3">
+            <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide mb-1">ระยะเวลา</p>
+            <p class="text-sm font-bold text-forest-900" id="md-duration">--</p>
+          </div>
+        </div>
+
+        <div class="rounded-xl bg-slate-50 p-4 mb-4">
+          <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide mb-1.5">วันที่ลา</p>
+          <div class="flex justify-between items-center text-sm font-medium">
+            <span class="text-forest-900" id="md-start">--</span>
+            <span class="text-slate-300">➡</span>
+            <span class="text-forest-900" id="md-end">--</span>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide mb-1.5 ml-1">เหตุผลการลา</p>
+          <div class="rounded-xl border border-slate-200 p-3.5 text-sm text-slate-700 leading-relaxed bg-white" id="md-reason" style="white-space: pre-wrap;">--</div>
+        </div>
+
+        <div class="mb-5 hidden" id="evidence-row">
+          <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide mb-1.5 ml-1">หลักฐานการลา</p>
+          <button type="button" id="md-evidence" onclick="viewCurrentEvidence()" class="flex items-center gap-2 w-fit rounded-xl bg-sky-50 border border-sky-200/60 px-4 py-2.5 text-sm font-bold text-sky-700 transition hover:bg-sky-100 hover:shadow-sm cursor-pointer">
+            <span>📎</span> เปิดดูรูปหลักฐาน / ไฟล์แนบ
+          </button>
+        </div>
+
+        <div class="border-t border-emerald-950/5 pt-5 mb-2" id="action-area">
+          <label class="mb-1.5 block text-xs font-bold text-slate-600">หมายเหตุ (ไม่บังคับ)</label>
+          <textarea id="approver-note" rows="2" placeholder="เหตุผลการพิจารณา..." class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition mb-4"></textarea>
+          
+          <div class="flex gap-3" id="action-buttons">
+            <button class="flex-1 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 py-3 text-center text-sm font-bold transition flex items-center justify-center gap-2" onclick="doAction(false)" id="reject-btn">
+              <span>✕</span> ปฏิเสธ
+            </button>
+            <button class="flex-1 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 py-3 text-center text-sm font-bold shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2" onclick="doAction(true)" id="approve-btn">
+              <span>✓</span> อนุมัติ
+            </button>
+          </div>
+        </div>
+
+        <div id="status-display" class="hidden mt-2 pt-4 border-t border-emerald-950/5 text-center bg-slate-50 rounded-xl p-4">
+          <div class="text-lg font-bold" id="sd-text">--</div>
+          <div class="text-sm font-medium text-slate-500 mt-1" id="sd-note">--</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js?v=2"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/router.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/leave.js"></script>
+<script src="js/gas-webhook.js"></script>
+<script>
+var currentUser = null;
+var currentLeaveId = null;
+
+auth.onAuthStateChanged(async user => {
+  if (!user) { window.location.href='index.html'; return; }
+  var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+  if (!snap.exists || snap.data().role < ROLES.INSTRUCTOR) {
+    window.location.href='dashboard.html'; return;
+  }
+  currentUser = { uid: user.uid, ...snap.data() };
+  
+  renderSidebar(currentUser);
+  renderTopbarUser(currentUser);
+  initSidebar();
+  
+  document.getElementById('sidebar-name').textContent = currentUser.name || currentUser.studentId;
+  document.getElementById('sidebar-role').textContent = ROLE_NAMES[currentUser.role];
+  document.getElementById('sidebar-user-card').classList.remove('hidden');
+
+  loadStats();
+  loadLeaves();
+});
+
+async function loadStats() {
+  var [pending, approved, rejected] = await Promise.all([
+    db.collection(COLLECTIONS.LEAVE).where('status','==','pending').get(),
+    db.collection(COLLECTIONS.LEAVE).where('status','==','approved').get(),
+    db.collection(COLLECTIONS.LEAVE).where('status','==','rejected').get(),
+  ]);
+  document.getElementById('cnt-pending').textContent  = pending.size;
+  document.getElementById('cnt-approved').textContent = approved.size;
+  document.getElementById('cnt-rejected').textContent = rejected.size;
+  document.getElementById('cnt-total').textContent    = pending.size + approved.size + rejected.size;
+}
+
+function leaveBadge(status) {
+  if(status === 'pending') return '<span class="rounded-full bg-amber-50 px-2 py-0.5 text-[0.65rem] font-bold text-amber-600 border border-amber-100">รอพิจารณา</span>';
+  if(status === 'approved') return '<span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-600 border border-emerald-100">อนุมัติแล้ว</span>';
+  return '<span class="rounded-full bg-rose-50 px-2 py-0.5 text-[0.65rem] font-bold text-rose-600 border border-rose-100">ปฏิเสธแล้ว</span>';
+}
+
+async function loadLeaves() {
+  var el = document.getElementById('leave-list');
+  el.innerHTML = `<div class="flex items-center justify-center p-12 text-slate-400"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>`;
+
+  var filters = {};
+  var st = document.getElementById('filter-status').value;
+  var tp = document.getElementById('filter-type').value;
+  if (st) filters.status = st;
+  if (tp) filters.type   = tp;
+
+  try {
+    var leaves = await getLeaveRequests(filters);
+    if (!leaves.length) {
+      el.innerHTML = `
+        <div class="card p-12 text-center text-slate-500">
+          <div class="text-4xl mb-3 opacity-50">📭</div>
+          <p class="font-bold text-forest-900 text-lg">ไม่มีรายการตามเงื่อนไขที่เลือก</p>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = leaves.map(l => {
+      const typeStr = l.type === 'sick' ? 'ลาป่วย' : 'ลากิจ';
+      const typeClass = l.type === 'sick' ? 'text-rose-600 bg-rose-50 border-rose-100' : 'text-sky-600 bg-sky-50 border-sky-100';
+      const shortReason = (l.reason||'').length > 80 ? (l.reason||'').substring(0,80) + '...' : (l.reason||'');
+      
+      let actionButtons = '';
+      if(l.status === 'pending') {
+        actionButtons = `
+          <div class="flex gap-2 shrink-0">
+            <button class="grid h-9 w-9 place-items-center rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition" onclick="event.stopPropagation();quickApprove('${l.id}',true)" title="อนุมัติ">✓</button>
+            <button class="grid h-9 w-9 place-items-center rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100 transition" onclick="event.stopPropagation();quickApprove('${l.id}',false)" title="ปฏิเสธ">✕</button>
+          </div>
+        `;
+      }
+      
+      return `
+        <div class="card p-4 transition hover:border-emerald-300 cursor-pointer group" onclick="openDetail('${l.id}')">
+          <div class="flex items-start gap-4">
+            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-slate-100 text-sm font-black text-slate-500">${initials(l.studentName)}</div>
+            
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <span class="font-bold text-forest-900 text-base">${escapeHtml(l.studentName)}</span>
+                <span class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">${l.studentId}</span>
+                ${leaveBadge(l.status)}
+              </div>
+              
+              <div class="flex items-center gap-2 mb-2 flex-wrap">
+                <span class="rounded-md border px-2 py-0.5 text-[0.65rem] font-bold ${typeClass}">${typeStr}</span>
+                <span class="text-xs font-bold text-forest-700">📅 ${formatDateShort(l.startDate)} – ${formatDateShort(l.endDate)} (${l.days} วัน)</span>
+              </div>
+              
+              <p class="text-sm text-slate-500 leading-snug break-words pr-2">${escapeHtml(shortReason)}</p>
+              
+              <div class="flex gap-4 mt-3 text-[0.7rem] text-slate-400">
+                <span class="flex items-center gap-1"><span>🏫</span> ${escapeHtml(l.school||'-')}</span>
+                <span class="flex items-center gap-1"><span>⚔️</span> หมวด ${escapeHtml(l.platoon||'-')}</span>
+                <span class="flex items-center gap-1 ml-auto">🕒 ${l.createdAt ? formatDateTime(l.createdAt) : '--'}</span>
+              </div>
+            </div>
+            
+            ${actionButtons}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="p-4 text-red-500 bg-red-50 rounded-xl text-sm font-bold">โหลดไม่สำเร็จ: ${e.message}</div>`;
+  }
+}
+
+function openModal(id) {
+  var el = document.getElementById(id);
+  el.classList.remove('hidden');
+  el.classList.add('grid');
+}
+
+function closeModal(id) {
+  var el = document.getElementById(id);
+  el.classList.add('hidden');
+  el.classList.remove('grid');
+}
+
+async function openDetail(leaveId) {
+  currentLeaveId = leaveId;
+  var leave = await getLeaveRequest(leaveId);
+  if (!leave) return;
+
+  document.getElementById('modal-student-name').textContent = leave.studentName;
+  document.getElementById('md-id').textContent    = leave.studentId;
+  document.getElementById('md-avatar').textContent = initials(leave.studentName);
+  
+  const typeStr = leave.type === 'sick' ? 'ลาป่วย' : 'ลากิจ';
+  const typeClass = leave.type === 'sick' ? 'text-rose-600' : 'text-sky-600';
+  document.getElementById('md-type').innerHTML = `<span class="${typeClass}">${typeStr}</span>`;
+  
+  document.getElementById('md-duration').textContent = `${leave.days} วัน`;
+  document.getElementById('md-start').textContent = formatDateThai(leave.startDate);
+  document.getElementById('md-end').textContent   = formatDateThai(leave.endDate);
+  document.getElementById('md-reason').textContent = leave.reason || '-';
+
+  var _activeEvidenceUrl = leave.evidenceUrl || '';
+  if (_activeEvidenceUrl) {
+    document.getElementById('evidence-row').classList.remove('hidden');
+  } else {
+    document.getElementById('evidence-row').classList.add('hidden');
+  }
+
+  window._activeEvidenceUrl = _activeEvidenceUrl;
+
+  document.getElementById('approver-note').value = '';
+  document.getElementById('action-area').classList.toggle('hidden', leave.status !== 'pending');
+  document.getElementById('status-display').classList.toggle('hidden', leave.status === 'pending');
+
+  if (leave.status !== 'pending') {
+    document.getElementById('sd-text').textContent = leave.status === 'approved' ? '✅ อนุมัติแล้ว' : '❌ ปฏิเสธแล้ว';
+    document.getElementById('sd-text').className   = leave.status === 'approved' ? 'text-emerald-600 text-lg font-extrabold' : 'text-rose-600 text-lg font-extrabold';
+    document.getElementById('sd-note').textContent = leave.approverNote ? 'หมายเหตุ: ' + leave.approverNote : 'ไม่มีหมายเหตุ';
+  }
+
+  openModal('detail-modal');
+}
+
+function viewCurrentEvidence() {
+  var url = window._activeEvidenceUrl;
+  if (!url) {
+    showToast('ไม่พบไฟล์หลักฐาน', 'error');
+    return;
+  }
+  
+  if (url.startsWith('data:image/') || url.match(/\.(jpeg|jpg|png|webp|gif)($|\?)/i)) {
+    if (typeof window.Swal !== 'undefined') {
+      Swal.fire({
+        title: '📎 รูปภาพหลักฐานการลา',
+        imageUrl: url,
+        imageAlt: 'หลักฐานการลา',
+        confirmButtonText: 'ปิดหน้าต่าง',
+        confirmButtonColor: '#159a61',
+        customClass: { popup: 'swal2-popup' }
+      });
+    } else {
+      var win = window.open();
+      if (win) win.document.write('<img src="' + url + '" style="max-width:100%;height:auto;display:block;margin:20px auto;"/>');
+    }
+  } else {
+    var win = window.open(url, '_blank');
+    if (!win) {
+      showToast('เบราว์เซอร์บล็อกการเปิดหน้าต่างใหม่', 'warning');
+    }
+  }
+}
+
+async function doAction(approved) {
+  if (!currentLeaveId) return;
+  var btn = approved ? document.getElementById('approve-btn') : document.getElementById('reject-btn');
+  var note = document.getElementById('approver-note').value.trim();
+  showLoading(btn, approved ? 'กำลังอนุมัติ...' : 'กำลังปฏิเสธ...');
+  try {
+    await processLeaveRequest(currentLeaveId, approved, currentUser.uid, note);
+    showToast(approved ? 'อนุมัติสำเร็จ' : 'ปฏิเสธสำเร็จ');
+    closeModal('detail-modal');
+    loadStats();
+    loadLeaves();
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+    hideLoading(btn);
+  }
+}
+
+async function quickApprove(leaveId, approved) {
+  try {
+    await processLeaveRequest(leaveId, approved, currentUser.uid, '');
+    showToast(approved ? 'อนุมัติสำเร็จ' : 'ปฏิเสธสำเร็จ');
+    loadStats();
+    loadLeaves();
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+</script>
+</body>
+</html>

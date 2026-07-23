@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>จัดการระบบ | ระบบเช็คชื่อ นศท.</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- face-api.js for enrollment -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<style>
+  .admin-tab.active { border-color: #159a61 !important; background-color: #e5f1ea !important; color: #17382a !important; font-weight: 700 !important; box-shadow: 0 2px 8px rgba(21,154,97,0.1) !important; }
+</style>
+</head>
+<body class="bg-[#f6faf8] text-[#17382a] font-sans">
+  <div id="sidebackdrop" class="fixed inset-0 z-30 hidden bg-slate-900/25 backdrop-blur-[1px]" onclick="toggleSidebar()"></div>
+  
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-[17.25rem] flex-col border-r border-emerald-950/5 bg-white px-4 py-5 transition-transform duration-250 lg:translate-x-0 -translate-x-full">
+    <div class="mb-8 flex items-center gap-3 px-2">
+      <img src="https://mstc23.rta.mi.th/amc23/img/23png.png" alt="Logo" class="h-10 w-10 object-contain rounded-xl drop-shadow-md">
+      <div>
+        <p class="text-[1.05rem] font-bold tracking-tight text-forest-900">รด. Check</p>
+        <p class="text-[.68rem] font-medium text-slate-400">ศูนย์เช็คเวลาเรียน</p>
+      </div>
+    </div>
+    <nav id="sidebar-nav" class="space-y-1"></nav>
+    <div class="mt-auto rounded-2xl bg-forest-50 p-3.5 mb-3 hidden" id="sidebar-user-card">
+       <div class="flex items-center gap-2 text-[.72rem] font-bold text-forest-700">
+         <div class="grid h-7 w-7 place-items-center rounded-lg bg-forest-100 text-[.62rem] font-black text-forest-700" id="sidebar-avatar">?</div>
+         <div>
+            <div id="sidebar-name" class="truncate w-[140px]">--</div>
+            <div id="sidebar-role" class="text-[0.65rem] text-forest-600/80">--</div>
+         </div>
+       </div>
+    </div>
+    <button class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:text-red-500" onclick="logout()">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 00-2-2h-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> ออกจากระบบ
+    </button>
+  </aside>
+
+  <main class="min-h-screen lg:ml-[17.25rem]">
+    <header class="sticky top-0 z-20 flex h-[4.7rem] items-center justify-between border-b border-emerald-950/5 bg-[#f6faf8]/90 px-4 backdrop-blur-md sm:px-7 lg:px-9">
+      <div class="flex items-center gap-3">
+        <button class="icon-btn lg:hidden" id="menu-btn" aria-label="เปิดเมนู">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div>
+          <p class="text-base font-bold text-forest-900 sm:text-lg">จัดการระบบ</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <a href="dashboard.html" class="hidden sm:flex text-xs font-bold text-forest-600 hover:underline mr-2">← กลับหน้าหลัก</a>
+        <div id="topbar-user" class="relative"></div>
+      </div>
+    </header>
+    
+    <div class="mx-auto max-w-[1440px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8" id="page-body">
+      
+      <!-- Admin Tabs -->
+      <div class="mb-8 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <button id="tab-btn-students" class="admin-tab active shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-emerald-300" onclick="switchAdminTab('students',this)">👥 จัดการ นศท.</button>
+        <button id="tab-btn-staff" class="admin-tab shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-emerald-300" onclick="switchAdminTab('staff',this)">🎖 จัดการเจ้าหน้าที่</button>
+        <button id="tab-btn-attendance" class="admin-tab shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-emerald-300" onclick="switchAdminTab('attendance',this)">📝 แก้ไขประวัติเช็คชื่อ</button>
+        <button id="tab-btn-rules" class="admin-tab shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-emerald-300" onclick="switchAdminTab('rules',this)">⏰ เวลา & เงื่อนไข</button>
+        <button id="tab-btn-geofence" class="admin-tab shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-emerald-300" onclick="switchAdminTab('geofence',this)">📍 พิกัดเช็คชื่อ</button>
+        <button id="tab-btn-system" class="admin-tab shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-emerald-300" onclick="switchAdminTab('system',this)">⚙️ ระบบ</button>
+      </div>
+
+      <!-- ─── STUDENTS TAB ─── -->
+      <div id="tab-students">
+        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end justify-between border-b border-emerald-950/5 pb-5">
+          <div>
+            <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">รายชื่อ นศท.</h1>
+            <p class="mt-2 text-sm text-slate-500">จัดการข้อมูลนักศึกษาวิชาทหารทั้งหมด</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="downloadCSVTemplate()" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-50">📄 Template CSV</button>
+            <button onclick="openImportModal()" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100">📥 Import CSV</button>
+            <button onclick="openAddStudentModal()" class="rounded-xl bg-forest-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700">+ เพิ่ม นศท.</button>
+          </div>
+        </div>
+
+        <!-- Search & Filter Card for Students -->
+        <div class="card p-5 sm:p-6 mb-6 border border-emerald-950/10 shadow-sm bg-gradient-to-br from-white via-white to-emerald-50/20">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+              <div class="h-9 w-9 grid place-items-center rounded-xl bg-emerald-100/70 text-emerald-700 text-base font-bold shrink-0">👥</div>
+              <div>
+                <h3 class="font-extrabold text-forest-900 text-sm sm:text-base">ค้นหาและแยกแยะตามชั้นปี/หมวด</h3>
+                <p class="text-xs text-slate-400 font-medium">ดูรายชื่อ นศท. แบ่งตามชั้นปีที่เรียนและหมวดที่สังกัด</p>
+              </div>
+            </div>
+
+            <!-- Quick Year Filter Pills -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-[0.68rem] font-bold text-slate-400 uppercase tracking-wider mr-1">ชั้นปี:</span>
+              <button type="button" class="preset-btn px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-xs" onclick="quickFilterCompany('', this)">ทั้งหมด</button>
+              <button type="button" class="preset-btn px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="quickFilterCompany('1', this)">ปี 1</button>
+              <button type="button" class="preset-btn px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="quickFilterCompany('2', this)">ปี 2</button>
+              <button type="button" class="preset-btn px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="quickFilterCompany('3', this)">ปี 3</button>
+              <button type="button" class="preset-btn px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="quickFilterCompany('4', this)">ปี 4</button>
+              <button type="button" class="preset-btn px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="quickFilterCompany('5', this)">ปี 5</button>
+            </div>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 items-end">
+            <div>
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>🔎</span> ค้นหา นศท.
+              </label>
+              <input type="search" id="search-student" placeholder="ชื่อ หรือ รหัส นศท..." oninput="filterStudents()" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition">
+            </div>
+            <div>
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>🎓</span> ชั้นปี
+              </label>
+              <select id="filter-s-company" onchange="filterStudents()" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition">
+                <option value="">ทั้งหมด</option>
+                <option value="1">ชั้นปีที่ 1</option>
+                <option value="2">ชั้นปีที่ 2</option>
+                <option value="3">ชั้นปีที่ 3</option>
+                <option value="4">ชั้นปีที่ 4</option>
+                <option value="5">ชั้นปีที่ 5</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>🎖️</span> หมวด
+              </label>
+              <select id="filter-s-platoon" onchange="filterStudents()" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition">
+                <option value="">ทั้งหมด</option>
+                <optgroup label="🛡️ หมวดปกติ (ชาย)">
+                  <option value="1">หมวด 1 (ชาย)</option>
+                  <option value="2">หมวด 2 (ชาย)</option>
+                  <option value="3">หมวด 3 (ชาย)</option>
+                  <option value="4">หมวด 4 (ชาย)</option>
+                  <option value="5">หมวด 5 (ชาย)</option>
+                </optgroup>
+                <optgroup label="🎀 หมวดพิเศษ (หญิง)">
+                  <option value="พิเศษ 1">หมวดพิเศษ 1 (หญิง)</option>
+                  <option value="พิเศษ 2">หมวดพิเศษ 2 (หญิง)</option>
+                  <option value="พิเศษ 3">หมวดพิเศษ 3 (หญิง)</option>
+                  <option value="พิเศษ 4">หมวดพิเศษ 4 (หญิง)</option>
+                  <option value="พิเศษ 5">หมวดพิเศษ 5 (หญิง)</option>
+                </optgroup>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>🏫</span> โรงเรียน
+              </label>
+              <input id="filter-s-school" placeholder="กรอกชื่อโรงเรียน..." oninput="filterStudents()" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition">
+            </div>
+          </div>
+        </div>
+
+        <div class="card overflow-hidden" id="students-table-wrap">
+          <div id="students-table" class="overflow-x-auto">
+            <div class="flex items-center justify-center p-12 text-slate-400"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── STAFF TAB ─── -->
+      <div id="tab-staff" class="hidden">
+        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end justify-between border-b border-emerald-950/5 pb-5">
+          <div>
+            <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">เจ้าหน้าที่และครูฝึก</h1>
+            <p class="mt-2 text-sm text-slate-500">จัดการข้อมูลเจ้าหน้าที่ระบบ</p>
+          </div>
+          <button onclick="openAddStaffModal()" class="rounded-xl bg-forest-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700">+ เพิ่มเจ้าหน้าที่</button>
+        </div>
+        <div class="card overflow-hidden">
+          <div id="staff-table" class="overflow-x-auto">
+            <div class="flex items-center justify-center p-12 text-slate-400"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── ATTENDANCE MANAGEMENT TAB ─── -->
+      <div id="tab-attendance" class="hidden">
+        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end justify-between border-b border-emerald-950/5 pb-5">
+          <div>
+            <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">จัดการประวัติการลงเวลาเรียน</h1>
+            <p class="mt-2 text-sm text-slate-500">ตรวจสอบ แก้ไข เพิ่ม หรือลบการเช็คชื่อเข้า–ออก ของ นศท.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="openAddAttendanceModal()" class="rounded-xl bg-forest-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700">+ เพิ่มบันทึกเวลาเรียน</button>
+          </div>
+        </div>
+
+        <!-- Search & Filter Card -->
+        <div class="card p-5 sm:p-6 mb-6 border border-emerald-950/10 shadow-sm bg-gradient-to-br from-white via-white to-emerald-50/20">
+          <div class="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
+            <div class="h-9 w-9 grid place-items-center rounded-xl bg-emerald-100/70 text-emerald-700 text-base font-bold shrink-0">🔍</div>
+            <div>
+              <h3 class="font-extrabold text-forest-900 text-sm sm:text-base">ค้นหาและตัวกรองข้อมูล</h3>
+              <p class="text-xs text-slate-400 font-medium">กรองบันทึกเวลาเรียนตามวันที่ รหัส นศท. ชั้นปี หรือสถานะ</p>
+            </div>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 items-end">
+            <div>
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>📅</span> วันที่
+              </label>
+              <input type="date" id="admin-att-date" onchange="loadAdminAttendanceRecords()" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition">
+            </div>
+            <div>
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>🔎</span> ค้นหา นศท.
+              </label>
+              <input type="search" id="admin-att-search" placeholder="ชื่อ หรือ รหัส นศท..." oninput="filterAdminAttendanceTable()" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition">
+            </div>
+            <div>
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>🎓</span> ชั้นปี
+              </label>
+              <select id="admin-att-company" onchange="filterAdminAttendanceTable()" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition">
+                <option value="">ทั้งหมด</option>
+                <option value="1">ชั้นปีที่ 1</option>
+                <option value="2">ชั้นปีที่ 2</option>
+                <option value="3">ชั้นปีที่ 3</option>
+                <option value="4">ชั้นปีที่ 4</option>
+                <option value="5">ชั้นปีที่ 5</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>📌</span> สถานะ
+              </label>
+              <select id="admin-att-status" onchange="filterAdminAttendanceTable()" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition">
+                <option value="">ทั้งหมด</option>
+                <option value="present">เช็คชื่อแล้ว (มา)</option>
+                <option value="late">สาย</option>
+                <option value="leave">ลา</option>
+                <option value="absent">ขาด</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="card overflow-hidden">
+          <div id="admin-attendance-table" class="overflow-x-auto">
+            <div class="flex items-center justify-center p-12 text-slate-400"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── RULES & TIME WINDOWS TAB ─── -->
+      <div id="tab-rules" class="hidden">
+        <div class="mb-6 border-b border-emerald-950/5 pb-5">
+          <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">กำหนดเวลา & เงื่อนไขการเช็คชื่อ</h1>
+          <p class="mt-2 text-sm text-slate-500">ตั้งเวลาเปิด–ปิดระบบเช็คชื่อ และกำหนดเงื่อนไขการผ่านเกณฑ์</p>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-2">
+          <!-- Rule Settings Card -->
+          <div class="card p-6 space-y-5">
+            <h3 class="font-bold text-forest-900 text-lg flex items-center gap-2">
+              <span>⏰</span> ช่วงเวลาลงเวลาเข้า–ออก
+            </h3>
+
+            <div>
+              <label class="mb-1.5 block text-xs font-bold text-slate-700">สถานะระบบเช็คชื่อ</label>
+              <select id="rule-system-enabled" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 outline-none transition">
+                <option value="true">🟢 เปิดระบบเช็คชื่อตามปกติ</option>
+                <option value="false">🔴 ปิดระบบเช็คชื่อชั่วคราว</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="mb-1.5 block text-xs font-bold text-slate-700">การบังคับช่วงเวลา (Time Window)</label>
+              <select id="rule-enforce-time" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 outline-none transition">
+                <option value="false">🔓 เปิดปิดอิสระ (นศท. ลงเวลาได้ตลอดเวลา)</option>
+                <option value="true">🔒 บังคับตามช่วงเวลาที่กำหนดข้างล่าง</option>
+              </select>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2 pt-2 border-t border-slate-100">
+              <div>
+                <label class="mb-1.5 block text-xs font-bold text-slate-700">เวลาเริ่มเช็คเข้า</label>
+                <input type="time" id="rule-checkin-start" value="06:00" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 outline-none transition">
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-bold text-slate-700">เวลาสิ้นสุดเช็คเข้า</label>
+                <input type="time" id="rule-checkin-end" value="09:00" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 outline-none transition">
+              </div>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2 pt-2 border-t border-slate-100">
+              <div>
+                <label class="mb-1.5 block text-xs font-bold text-slate-700">เวลาเริ่มเช็คออก</label>
+                <input type="time" id="rule-checkout-start" value="14:00" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 outline-none transition">
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-bold text-slate-700">เวลาสิ้นสุดเช็คออก</label>
+                <input type="time" id="rule-checkout-end" value="18:00" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 outline-none transition">
+              </div>
+            </div>
+          </div>
+
+          <!-- Qualification Criteria Card -->
+          <div class="card p-6 space-y-5 flex flex-col justify-between">
+            <div class="space-y-5">
+              <h3 class="font-bold text-forest-900 text-lg flex items-center gap-2">
+                <span>📜</span> เงื่อนไขการผ่านเกณฑ์ของ นศท.
+              </h3>
+
+              <div>
+                <label class="mb-1.5 block text-xs font-bold text-slate-700">จำนวนครั้งปฏิบัติหน้าที่ขั้นต่ำ (เพื่อผ่านเกณฑ์)</label>
+                <div class="flex items-center gap-3">
+                  <input type="number" id="rule-min-sessions" value="10" min="1" max="100" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 outline-none transition">
+                  <span class="text-sm font-bold text-slate-500 shrink-0">ครั้ง</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-2">หาก นศท. มีเวลาเข้าปฏิบัติหน้าที่ครบตามจำนวนนี้ ระบบจะแสดงสถานะ "ผ่านเกณฑ์ ✅" ในหน้า นศท.</p>
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100">
+              <button onclick="saveAdminRules()" class="w-full rounded-xl bg-forest-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700">
+                💾 บันทึกตั้งค่าเวลาและเงื่อนไข
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── GEOFENCE TAB ─── -->
+      <div id="tab-geofence" class="hidden">
+        <div class="mb-6 border-b border-emerald-950/5 pb-5">
+          <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">กำหนดพิกัดการเช็คชื่อ</h1>
+          <p class="mt-2 text-sm text-slate-500">กำหนดพื้นที่ที่อนุญาตให้ นศท. รายงานตัวเข้าเรียนได้</p>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-[1fr_340px]">
+          <!-- Map placeholder -->
+          <div class="card p-10 flex flex-col items-center justify-center text-center text-slate-400 bg-slate-50 border-2 border-dashed border-slate-200">
+            <div class="text-5xl mb-4">🗺️</div>
+            <p class="font-bold text-forest-900 mb-2">Google Maps Integration</p>
+            <p class="text-sm">สำหรับใช้งาน Maps กรุณาเพิ่ม Google Maps API Key<br>และแทนที่ส่วนนี้ด้วย iframe หรือ Maps JS API</p>
+            <div class="mt-6 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-slate-600 border border-slate-100 shadow-sm">
+              แสดงพิกัด: Lat <span id="map-lat-display" class="text-forest-600">--</span>, Lng <span id="map-lng-display" class="text-forest-600">--</span>
+            </div>
+            <button onclick="useMyLocation()" class="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 flex items-center justify-center gap-2">
+              <span>📍</span> ใช้ตำแหน่งปัจจุบันของฉัน
+            </button>
+          </div>
+
+          <!-- Settings form -->
+          <div class="space-y-4">
+            <div class="card p-5">
+              <h3 class="font-bold text-forest-900 mb-4 flex items-center gap-2"><span>⚙️</span> ตั้งค่าพิกัด</h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide">Latitude (ละติจูด)</label>
+                  <input type="number" id="geo-lat" step="any" placeholder="13.7563" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition">
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide">Longitude (ลองจิจูด)</label>
+                  <input type="number" id="geo-lng" step="any" placeholder="100.5018" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition">
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide">รัศมีพื้นที่ (เมตร)</label>
+                  <input type="number" id="geo-radius" value="200" min="50" max="5000" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition">
+                </div>
+                <button class="w-full rounded-xl bg-forest-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700 mt-2" onclick="saveGeoSettings()">💾 บันทึกพิกัด</button>
+              </div>
+            </div>
+
+            <div class="card p-5">
+              <h4 class="font-bold text-forest-900 mb-3 flex items-center gap-2"><span>ℹ️</span> ข้อมูลปัจจุบัน</h4>
+              <div id="geo-current" class="text-sm text-slate-500 font-medium">กำลังโหลด...</div>
+            </div>
+
+            <div class="rounded-xl bg-sky-50 border border-sky-100 p-4 flex gap-3 text-sky-800">
+              <span class="text-lg">💡</span>
+              <div class="text-xs">
+                <strong class="block mb-1">วิธีหาพิกัด:</strong>
+                เปิด Google Maps → คลิกขวาที่ตำแหน่งที่ต้องการ → เลือกคัดลอกพิกัดแรกที่ปรากฏ
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── SYSTEM TAB ─── -->
+      <div id="tab-system" class="hidden">
+        <div class="mb-6 border-b border-emerald-950/5 pb-5">
+          <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">ข้อมูลระบบ</h1>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-8" id="sys-stats">
+          <div class="card p-5 flex items-center gap-4">
+            <div class="grid h-14 w-14 place-items-center rounded-xl bg-amber-50 text-2xl text-amber-500">👥</div>
+            <div>
+              <p class="text-3xl font-black tracking-tight text-forest-900" id="sys-students">--</p>
+              <p class="text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide">นศท. ทั้งหมด</p>
+            </div>
+          </div>
+          <div class="card p-5 flex items-center gap-4">
+            <div class="grid h-14 w-14 place-items-center rounded-xl bg-sky-50 text-2xl text-sky-500">🎖</div>
+            <div>
+              <p class="text-3xl font-black tracking-tight text-forest-900" id="sys-staff">--</p>
+              <p class="text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide">เจ้าหน้าที่</p>
+            </div>
+          </div>
+          <div class="card p-5 flex items-center gap-4">
+            <div class="grid h-14 w-14 place-items-center rounded-xl bg-emerald-50 text-2xl text-emerald-500">✓</div>
+            <div>
+              <p class="text-3xl font-black tracking-tight text-forest-900" id="sys-today">--</p>
+              <p class="text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide">เช็คชื่อวันนี้</p>
+            </div>
+          </div>
+          <div class="card p-5 flex items-center gap-4">
+            <div class="grid h-14 w-14 place-items-center rounded-xl bg-rose-50 text-2xl text-rose-500">🏫</div>
+            <div>
+              <p class="text-3xl font-black tracking-tight text-forest-900" id="sys-schools">--</p>
+              <p class="text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide">สถานศึกษา</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-2">
+          <div class="card p-6">
+            <h3 class="font-bold text-forest-900 mb-5 flex items-center gap-2"><span>⚠️</span> การดำเนินการด้านระบบ</h3>
+            <div class="flex flex-col gap-3">
+              <button onclick="markAbsentAll()" class="w-full rounded-xl border border-rose-200 bg-rose-50 py-3.5 px-4 text-left text-sm font-bold text-rose-600 transition hover:bg-rose-100 flex items-center gap-3">
+                <span class="text-lg">✗</span> บันทึก "ขาด" อัตโนมัติสำหรับผู้ที่ยังไม่เช็คชื่อวันนี้
+              </button>
+              <a href="reports.html" class="w-full rounded-xl border border-emerald-200 bg-emerald-50 py-3.5 px-4 text-left text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 flex items-center gap-3">
+                <span class="text-lg">📊</span> ดูรายงานและส่งอีเมลสถานศึกษา
+              </a>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <h3 class="font-bold text-forest-900 mb-3 flex items-center gap-2"><span>📋</span> face-api.js Models</h3>
+            <p class="text-sm text-slate-500 mb-5">สำหรับใช้งาน Face Recognition ต้องดาวน์โหลด Models มาวางไว้ในโฟลเดอร์ <code>/models/</code></p>
+            <div class="flex flex-col gap-2 text-xs font-bold text-slate-600">
+              <div class="rounded-lg bg-slate-50 px-3 py-2 border border-slate-100 flex items-center gap-2"><span>📁</span> /models/tiny_face_detector/</div>
+              <div class="rounded-lg bg-slate-50 px-3 py-2 border border-slate-100 flex items-center gap-2"><span>📁</span> /models/face_landmark_68/</div>
+              <div class="rounded-lg bg-slate-50 px-3 py-2 border border-slate-100 flex items-center gap-2"><span>📁</span> /models/face_recognition/</div>
+            </div>
+            <div class="rounded-xl bg-sky-50 border border-sky-100 p-4 mt-5 text-sky-800 flex gap-3">
+              <span class="text-lg">ℹ️</span>
+              <div class="text-xs">
+                <strong class="block mb-1">แหล่งดาวน์โหลด:</strong>
+                <a href="https://github.com/justadudewhohacks/face-api.js/tree/master/weights" target="_blank" class="text-sky-600 underline hover:text-sky-700 font-bold">
+                  github.com/justadudewhohacks/face-api.js
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-3 rounded-2xl bg-white/95 backdrop-blur-xl px-5 py-3 text-sm font-bold text-slate-800 shadow-2xl border border-emerald-500/30 cursor-pointer" onclick="this.classList.remove('show')">
+    <span class="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 text-xs font-black text-emerald-700 shrink-0">✓</span>
+    <span id="toastText" class="flex-1 font-bold text-slate-800">ดำเนินการสำเร็จ</span>
+    <span class="text-slate-400 hover:text-slate-700 ml-2 font-black text-xs">✕</span>
+  </div>
+
+  <!-- Add Student Modal -->
+  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/65 p-4 sm:p-6 backdrop-blur-md overflow-y-auto" id="add-student-modal">
+    <div class="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] my-auto animate-enter">
+      <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0 bg-gradient-to-r from-emerald-50/60 via-slate-50 to-white">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">👤</span>
+          <h3 class="font-extrabold text-slate-800 text-base sm:text-lg" id="student-modal-title">เพิ่ม นศท. ใหม่</h3>
+        </div>
+        <button class="h-9 w-9 grid place-items-center rounded-xl bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition shadow-sm" onclick="closeModal('add-student-modal')">✕</button>
+      </div>
+      <div class="p-6 overflow-y-auto space-y-4">
+        <input type="hidden" id="edit-student-uid">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">รหัสประจำตัว นศท. <span class="text-rose-500">*</span></label>
+            <input id="s-studentId" placeholder="เช่น 6701234" required class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ชื่อ-นามสกุล <span class="text-rose-500">*</span></label>
+            <input id="s-name" placeholder="ชื่อ นามสกุล" required class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">วัน/เดือน/ปีเกิด (รหัสผ่าน) <span class="text-rose-500">*</span></label>
+            <input type="text" id="s-birthdate" placeholder="วว/ดด/ปปปป (เช่น 15/01/2005)" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">เลขบัตรประชาชน <span class="text-rose-500">*</span></label>
+            <input id="s-nationalId" placeholder="x-xxxx-xxxxx-xx-x" maxlength="17" required class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ชั้นปี <span class="text-rose-500">*</span></label>
+            <select id="s-company" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+              <option value="1">ชั้นปีที่ 1</option>
+              <option value="2">ชั้นปีที่ 2</option>
+              <option value="3">ชั้นปีที่ 3</option>
+              <option value="4">ชั้นปีที่ 4</option>
+              <option value="5">ชั้นปีที่ 5</option>
+            </select>
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">หมวด <span class="text-rose-500">*</span></label>
+            <select id="s-platoon" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+              <optgroup label="🛡️ หมวดปกติ (ชาย)">
+                <option value="1">หมวด 1 (ชาย)</option>
+                <option value="2">หมวด 2 (ชาย)</option>
+                <option value="3">หมวด 3 (ชาย)</option>
+                <option value="4">หมวด 4 (ชาย)</option>
+                <option value="5">หมวด 5 (ชาย)</option>
+              </optgroup>
+              <optgroup label="🎀 หมวดพิเศษ (หญิง)">
+                <option value="พิเศษ 1">หมวดพิเศษ 1 (หญิง)</option>
+                <option value="พิเศษ 2">หมวดพิเศษ 2 (หญิง)</option>
+                <option value="พิเศษ 3">หมวดพิเศษ 3 (หญิง)</option>
+                <option value="พิเศษ 4">หมวดพิเศษ 4 (หญิง)</option>
+                <option value="พิเศษ 5">หมวดพิเศษ 5 (หญิง)</option>
+              </optgroup>
+            </select>
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">สถานศึกษา <span class="text-rose-500">*</span></label>
+            <input id="s-school" placeholder="ชื่อโรงเรียน" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">รหัสสถานศึกษา</label>
+            <input id="s-schoolCode" placeholder="รหัสโรงเรียน" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ศูนย์ / สังกัด <span class="text-rose-500">*</span></label>
+            <input id="s-center" placeholder="เช่น ศูนย์การฝึกนักศึกษาวิชาทหาร" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-slate-100 px-6 py-4 shrink-0 bg-slate-50/80 flex gap-3 justify-end">
+        <button class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-100 w-full sm:w-auto" onclick="closeModal('add-student-modal')">ยกเลิก</button>
+        <button class="rounded-xl login-btn-emerald px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 w-full sm:w-auto" id="save-student-btn" onclick="saveStudent()">💾 บันทึกข้อมูล</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Face Enroll Modal -->
+  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/65 p-4 sm:p-6 backdrop-blur-md overflow-y-auto" id="face-enroll-modal">
+    <div class="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-100 flex flex-col max-h-[92vh] my-auto animate-enter">
+      <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0 bg-gradient-to-r from-emerald-50/60 via-slate-50 to-white">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">📸</span>
+          <h3 class="font-extrabold text-slate-800 text-base sm:text-lg">ลงทะเบียน Face ID</h3>
+        </div>
+        <button class="h-9 w-9 grid place-items-center rounded-xl bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition shadow-sm" onclick="closeFaceEnroll()">✕</button>
+      </div>
+      <div class="p-6 flex flex-col items-center overflow-y-auto">
+        <p class="mb-4 text-sm font-extrabold text-slate-800 text-center" id="enroll-name">ชื่อ นศท.</p>
+        <div class="relative mx-auto h-[280px] w-full max-w-[320px] overflow-hidden rounded-2xl bg-slate-900 shadow-inner">
+          <video id="enroll-video" class="absolute inset-0 w-full h-full object-cover" playsinline muted></video>
+          <canvas id="enroll-canvas" class="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"></canvas>
+          <div class="absolute inset-0 border-2 border-dashed border-emerald-400/70 m-6 rounded-xl pointer-events-none z-20"></div>
+          <div class="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-xl bg-black/60 backdrop-blur-md px-3.5 py-1.5 text-xs font-bold text-white z-30 whitespace-nowrap shadow-lg" id="enroll-status">กำลังโหลด Face AI...</div>
+        </div>
+        <p class="mt-4 text-xs text-slate-500 font-medium text-center">หันหน้าเข้าหากล้องและให้อยู่ในกรอบอย่างชัดเจน</p>
+      </div>
+      <div class="border-t border-slate-100 px-6 py-4 shrink-0 bg-slate-50/80 flex gap-3">
+        <button class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-100" onclick="closeFaceEnroll()">ยกเลิก</button>
+        <button class="flex-1 rounded-xl login-btn-emerald py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20" id="enroll-btn" onclick="doEnroll()">📸 บันทึกใบหน้า</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Staff Modal -->
+  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/65 p-4 sm:p-6 backdrop-blur-md overflow-y-auto" id="add-staff-modal">
+    <div class="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] my-auto animate-enter">
+      <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0 bg-gradient-to-r from-emerald-50/60 via-slate-50 to-white">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">🎖</span>
+          <h3 class="font-extrabold text-slate-800 text-base sm:text-lg">เพิ่มเจ้าหน้าที่ / ครูฝึก</h3>
+        </div>
+        <button class="h-9 w-9 grid place-items-center rounded-xl bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition shadow-sm" onclick="closeModal('add-staff-modal')">✕</button>
+      </div>
+      <div class="p-6 overflow-y-auto">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ระดับสิทธิ์ (Role) <span class="text-rose-500">*</span></label>
+            <select id="st-role" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition" onchange="toggleStaffFields()">
+              <option value="6">ระดับ 6: แอดมินระบบ (System Admin)</option>
+              <option value="5">ระดับ 5: หัวหน้าชุดครูฝึก (ผู้อนุมัติใบลา)</option>
+              <option value="4">ระดับ 4: กองพัน / ครู</option>
+              <option value="3">ระดับ 3: กองร้อย (ผู้ดูแลชั้นปี)</option>
+              <option value="2" selected>ระดับ 2: หัวหน้าหมวด</option>
+            </select>
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">รหัสประจำตัว (Username) <span class="text-rose-500">*</span></label>
+            <input id="st-id" placeholder="รหัสเพื่อ Login" required class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ชื่อ-นามสกุล <span class="text-rose-500">*</span></label>
+            <input id="st-name" placeholder="ชื่อ-นามสกุล" required class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">รหัสผ่านเริ่มต้น (วันเกิด) <span class="text-rose-500">*</span></label>
+            <input id="st-birth" placeholder="เช่น 15/01/2005 หรือ 123456" required class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+          
+          <!-- Conditional Fields for Platoon Leader -->
+          <div id="st-company-wrap">
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ชั้นปีที่ดูแล <span class="text-rose-500">*</span></label>
+            <select id="st-company" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+              <option value="1">ชั้นปีที่ 1</option>
+              <option value="2">ชั้นปีที่ 2</option>
+              <option value="3">ชั้นปีที่ 3</option>
+              <option value="4">ชั้นปีที่ 4</option>
+              <option value="5">ชั้นปีที่ 5</option>
+            </select>
+          </div>
+          <div id="st-platoon-wrap">
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">หมวดที่ดูแล <span class="text-rose-500">*</span></label>
+            <select id="st-platoon" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+              <option value="">-- เลือกหมวดที่ดูแล --</option>
+              <optgroup label="🛡️ หมวดปกติ (หัวหน้าหมวด - ชาย)">
+                <option value="1">หมวด 1 (ชาย)</option>
+                <option value="2">หมวด 2 (ชาย)</option>
+                <option value="3">หมวด 3 (ชาย)</option>
+                <option value="4">หมวด 4 (ชาย)</option>
+                <option value="5">หมวด 5 (ชาย)</option>
+              </optgroup>
+              <optgroup label="🎀 หมวดพิเศษ (หัวหน้าหมวด - หญิง)">
+                <option value="พิเศษ 1">หมวดพิเศษ 1 (หญิง)</option>
+                <option value="พิเศษ 2">หมวดพิเศษ 2 (หญิง)</option>
+                <option value="พิเศษ 3">หมวดพิเศษ 3 (หญิง)</option>
+                <option value="พิเศษ 4">หมวดพิเศษ 4 (หญิง)</option>
+                <option value="พิเศษ 5">หมวดพิเศษ 5 (หญิง)</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-slate-100 px-6 py-4 shrink-0 bg-slate-50/80 flex gap-3 justify-end">
+        <button class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-100 w-full sm:w-auto" onclick="closeModal('add-staff-modal')">ยกเลิก</button>
+        <button class="rounded-xl login-btn-emerald px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 w-full sm:w-auto" id="save-staff-btn" onclick="saveStaff()">💾 บันทึกเจ้าหน้าที่</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import CSV Modal -->
+  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/65 p-4 sm:p-6 backdrop-blur-md overflow-y-auto" id="import-modal">
+    <div class="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] my-auto animate-enter">
+      <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0 bg-gradient-to-r from-emerald-50/60 via-slate-50 to-white">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">📤</span>
+          <h3 class="font-extrabold text-slate-800 text-base sm:text-lg">นำเข้าข้อมูล นศท. (CSV)</h3>
+        </div>
+        <button class="h-9 w-9 grid place-items-center rounded-xl bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition shadow-sm" onclick="closeModal('import-modal')">✕</button>
+      </div>
+      <div class="p-6 overflow-y-auto">
+        <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 p-8 text-center transition hover:bg-slate-100/80 cursor-pointer" onclick="document.getElementById('csv-file').click()">
+          <input type="file" id="csv-file" accept=".csv" class="hidden" onchange="handleCSVUpload(this)">
+          <div class="text-4xl mb-3">📁</div>
+          <p class="font-extrabold text-slate-800 text-lg mb-1">แตะเพื่อเลือกไฟล์ .CSV</p>
+          <p class="text-xs font-semibold text-slate-500">หรือลากไฟล์มาวางที่นี่เพื่อนำเข้าข้อมูล นศท.</p>
+        </div>
+
+        <div id="import-preview" class="hidden mt-6">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-extrabold text-slate-800 text-sm">ตัวอย่างข้อมูล</h4>
+            <span class="rounded-xl bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-100" id="import-count">พบข้อมูล 0 รายการ</span>
+          </div>
+          <div class="overflow-x-auto rounded-2xl border border-slate-200" id="import-table">
+            <!-- Table will be injected here -->
+          </div>
+          
+          <div id="import-progress" class="hidden mt-4">
+            <div class="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
+              <span>กำลังนำเข้าข้อมูล...</span>
+              <span id="import-progress-text">0 / 0</span>
+            </div>
+            <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+               <div class="h-full bg-emerald-500 transition-all duration-300 rounded-full" id="import-progress-fill" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-slate-100 px-6 py-4 shrink-0 bg-slate-50/80 flex gap-3 justify-end">
+        <button class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-100 w-full sm:w-auto" onclick="closeModal('import-modal')">ยกเลิก</button>
+        <button class="rounded-xl login-btn-emerald px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 w-full sm:w-auto disabled:opacity-50" id="do-import-btn" disabled onclick="doImport()">📤 เริ่มนำเข้าข้อมูล</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Attendance Modal -->
+  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/65 p-4 sm:p-6 backdrop-blur-md overflow-y-auto" id="edit-attendance-modal">
+    <div class="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-100 flex flex-col my-auto animate-enter">
+      <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-gradient-to-r from-emerald-50/60 via-slate-50 to-white">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">✏️</span>
+          <h3 class="font-extrabold text-slate-800 text-base sm:text-lg">แก้ไขบันทึกเวลาเรียน</h3>
+        </div>
+        <button class="h-9 w-9 grid place-items-center rounded-xl bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition shadow-sm" onclick="closeModal('edit-attendance-modal')">✕</button>
+      </div>
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="att-edit-uid">
+        <div>
+          <label class="mb-1.5 block text-xs font-bold text-slate-700">ชื่อ–นามสกุล นศท.</label>
+          <input id="att-edit-name" readonly class="w-full rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-sm font-bold text-slate-600 outline-none">
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-bold text-slate-700">วันที่</label>
+          <input type="date" id="att-edit-date" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:border-emerald-500 outline-none transition">
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700">เวลาเข้า (In)</label>
+            <input type="text" id="att-edit-checkin" placeholder="เช่น 07:36:22" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-mono font-bold text-emerald-800 focus:border-emerald-500 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700">เวลาออก (Out)</label>
+            <input type="text" id="att-edit-checkout" placeholder="เช่น 16:55:15" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-mono font-bold text-amber-800 focus:border-emerald-500 outline-none transition">
+          </div>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-bold text-slate-700">สถานะ</label>
+          <select id="att-edit-status" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:border-emerald-500 outline-none transition">
+            <option value="present">✓ เช็คชื่อแล้ว (มา)</option>
+            <option value="late">⏰ สาย</option>
+            <option value="leave">📋 ลากิจ/ป่วย</option>
+            <option value="absent">✗ ขาดเรียน</option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-bold text-slate-700">หมายเหตุ</label>
+          <input id="att-edit-note" placeholder="ระบุเหตุผลหรือการแก้ไข..." class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-medium text-slate-800 outline-none transition">
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4">
+        <button class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 transition" onclick="closeModal('edit-attendance-modal')">ยกเลิก</button>
+        <button class="rounded-xl bg-forest-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 hover:bg-forest-700 transition" onclick="saveEditedAttendance()">💾 บันทึกการแก้ไข</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Attendance Modal -->
+  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/65 p-4 sm:p-6 backdrop-blur-md overflow-y-auto" id="add-attendance-modal">
+    <div class="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-100 flex flex-col my-auto animate-enter">
+      <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-gradient-to-r from-emerald-50/60 via-slate-50 to-white">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">➕</span>
+          <h3 class="font-extrabold text-slate-800 text-base sm:text-lg">เพิ่มบันทึกเวลาเรียน</h3>
+        </div>
+        <button class="h-9 w-9 grid place-items-center rounded-xl bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition shadow-sm" onclick="closeModal('add-attendance-modal')">✕</button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="mb-1.5 block text-xs font-bold text-slate-700">เลือก นศท. <span class="text-rose-500">*</span></label>
+          <select id="att-add-uid" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:border-emerald-500 outline-none transition">
+            <!-- Dynamic student options -->
+          </select>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-bold text-slate-700">วันที่ <span class="text-rose-500">*</span></label>
+          <input type="date" id="att-add-date" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:border-emerald-500 outline-none transition">
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700">เวลาเข้า (In)</label>
+            <input type="text" id="att-add-checkin" value="07:30:00" placeholder="07:30:00" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-mono font-bold text-emerald-800 focus:border-emerald-500 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700">เวลาออก (Out)</label>
+            <input type="text" id="att-add-checkout" value="16:30:00" placeholder="16:30:00" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-mono font-bold text-amber-800 focus:border-emerald-500 outline-none transition">
+          </div>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-bold text-slate-700">สถานะ</label>
+          <select id="att-add-status" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:border-emerald-500 outline-none transition">
+            <option value="present">✓ เช็คชื่อแล้ว (มา)</option>
+            <option value="late">⏰ สาย</option>
+            <option value="leave">📋 ลากิจ/ป่วย</option>
+            <option value="absent">✗ ขาดเรียน</option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-bold text-slate-700">หมายเหตุ</label>
+          <input id="att-add-note" placeholder="ระบุเหตุผลหรือเพิ่มเติม..." class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-medium text-slate-800 outline-none transition">
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4">
+        <button class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 transition" onclick="closeModal('add-attendance-modal')">ยกเลิก</button>
+        <button class="rounded-xl bg-forest-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 hover:bg-forest-700 transition" onclick="saveNewAttendance()">➕ เพิ่มบันทึกเวลา</button>
+      </div>
+    </div>
+  </div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js?v=2"></script>
+<script src="js/datepicker.js"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/router.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/attendance.js"></script>
+<script src="js/face-recognition.js"></script>
+<script>
+var currentUser = null;
+var allStudents = [];
+var csvStudents = [];
+var enrollTarget = null;
+var enrollStream = null;
+
+auth.onAuthStateChanged(async user => {
+  if (!user) { window.location.href='index.html'; return; }
+  var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+  if (!snap.exists || snap.data().role < ROLES.COMPANY) {
+    window.location.href='dashboard.html'; return;
+  }
+  currentUser = { uid: user.uid, ...snap.data() };
+  
+  renderSidebar(currentUser);
+  renderTopbarUser(currentUser);
+  initSidebar();
+  
+  document.getElementById('sidebar-name').textContent = currentUser.name || currentUser.studentId;
+  document.getElementById('sidebar-role').textContent = ROLE_NAMES[currentUser.role];
+  document.getElementById('sidebar-user-card').classList.remove('hidden');
+
+  setupRoleTabVisibility(currentUser.role);
+  loadStudents();
+});
+
+function setupRoleTabVisibility(role) {
+  const showTabs = {
+    3: ['students'],
+    4: ['students', 'attendance'],
+    5: ['students', 'staff', 'attendance'],
+    6: ['students', 'staff', 'attendance', 'rules', 'geofence', 'system']
+  };
+  const allowed = showTabs[role] || ['students'];
+  ['students', 'staff', 'attendance', 'rules', 'geofence', 'system'].forEach(t => {
+    const btn = document.getElementById('tab-btn-' + t);
+    if (btn) {
+      if (allowed.includes(t)) btn.classList.remove('hidden');
+      else btn.classList.add('hidden');
+    }
+  });
+}
+
+function switchAdminTab(tabId, btn) {
+  ['students','staff','attendance','rules','geofence','system'].forEach(t => {
+    var el = document.getElementById('tab-'+t);
+    if (el) el.classList.add('hidden');
+  });
+  var target = document.getElementById('tab-'+tabId);
+  if (target) target.classList.remove('hidden');
+
+  document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  if (tabId === 'staff') loadStaff();
+  if (tabId === 'attendance') loadAdminAttendanceTab();
+  if (tabId === 'rules') loadAdminRulesTab();
+  if (tabId === 'geofence') loadGeoSettings();
+  if (tabId === 'system') loadSysStats();
+}
+
+// ─── Students ─────────────────────────────────────────────────
+async function loadStudents() {
+  var el = document.getElementById('students-table');
+  el.innerHTML = `<div class="flex items-center justify-center p-12 text-slate-400"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>`;
+  try {
+    var snap = await db.collection(COLLECTIONS.USERS).where('role','==',ROLES.STUDENT).get();
+    allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    if (currentUser && currentUser.role === ROLES.COMPANY && currentUser.company) {
+      var cpSelect = document.getElementById('filter-s-company');
+      if (cpSelect) {
+        cpSelect.value = currentUser.company;
+        cpSelect.disabled = true;
+        cpSelect.classList.add('bg-slate-50', 'text-slate-500');
+      }
+    }
+
+    filterStudents();
+  } catch(e) { el.innerHTML = `<div class="p-4 text-red-500 bg-red-50 rounded-xl text-sm font-bold">โหลดไม่สำเร็จ: ${e.message}</div>`; }
+}
+
+function quickFilterCompany(val, btn) {
+  document.getElementById('filter-s-company').value = val;
+  document.querySelectorAll('#tab-students .preset-btn').forEach(b => {
+    b.classList.remove('bg-emerald-600', 'text-white', 'shadow-xs');
+    b.classList.add('bg-slate-100', 'text-slate-600', 'hover:bg-emerald-50', 'hover:text-emerald-700');
+  });
+  if (btn) {
+    btn.classList.remove('bg-slate-100', 'text-slate-600', 'hover:bg-emerald-50', 'hover:text-emerald-700');
+    btn.classList.add('bg-emerald-600', 'text-white', 'shadow-xs');
+  }
+  filterStudents();
+}
+
+function filterStudents() {
+  var q = document.getElementById('search-student').value.toLowerCase();
+  var cp = document.getElementById('filter-s-company').value;
+  var pl = document.getElementById('filter-s-platoon').value.toLowerCase();
+  var sc = document.getElementById('filter-s-school').value.toLowerCase();
+
+  var res = allStudents.filter(s => {
+    if (q && !((s.name||'').toLowerCase().includes(q) || (s.studentId||'').includes(q))) return false;
+    if (cp && String(s.company) !== String(cp)) return false;
+    if (pl && String(s.platoon||'').trim() !== String(pl).trim()) return false;
+    if (sc && !(s.school||'').toLowerCase().includes(sc)) return false;
+    return true;
+  });
+
+  renderStudentsTable(res);
+}
+
+function renderStudentsTable(list) {
+  var el = document.getElementById('students-table');
+  if (!list.length) { 
+    el.innerHTML = `<div class="p-12 text-center text-slate-400"><p class="font-bold text-forest-900 text-lg">ไม่พบข้อมูล นศท.</p><p class="text-sm">ลองเปลี่ยนเงื่อนไขการค้นหา</p></div>`; 
+    return; 
+  }
+  
+  list.sort((a,b) => {
+    if(a.company !== b.company) return (a.company||0) - (b.company||0);
+    if(a.platoon !== b.platoon) return String(a.platoon||'').localeCompare(String(b.platoon||''));
+    return String(a.studentId||'').localeCompare(String(b.studentId||''));
+  });
+
+  el.innerHTML = `
+    <table class="w-full text-left border-collapse min-w-[800px]">
+      <thead>
+        <tr class="bg-slate-50 border-b border-emerald-950/5">
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">รหัส / ชื่อ นศท.</th>
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">ชั้นปี & หมวด</th>
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">สถานศึกษา</th>
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">Face ID</th>
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider text-right">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-emerald-950/5">
+        ${list.map(s => `
+        <tr class="hover:bg-slate-50/50 transition">
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-100 text-[0.65rem] font-black text-forest-700">${initials(s.name)}</div>
+              <div>
+                <p class="text-sm font-bold text-forest-900">${escapeHtml(s.name||'')}</p>
+                <p class="text-xs text-slate-500 font-medium">${escapeHtml(s.studentId||'')}</p>
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-200/80">🎓 ชั้นปีที่ ${escapeHtml(s.company||'-')}</span>
+              <span class="rounded-lg bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-800 border border-sky-200/80">🎖️ หมวด ${escapeHtml(s.platoon||'-')}</span>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            <p class="text-sm text-slate-700 max-w-[180px] truncate font-medium" title="${escapeHtml(s.school||'')}">${escapeHtml(s.school||'-')}</p>
+          </td>
+          <td class="px-4 py-3">
+            ${s.faceDescriptor 
+              ? `<span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[0.65rem] font-bold text-emerald-600 border border-emerald-100"><span>✅</span> ลงทะเบียนแล้ว</span>` 
+              : `<span class="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-[0.65rem] font-bold text-rose-600 border border-rose-100"><span>❌</span> ยังไม่ลงทะเบียน</span>`
+            }
+          </td>
+          <td class="px-4 py-3 text-right">
+            <div class="flex justify-end gap-1.5">
+              <button onclick="openEditStudent('${s.id}')" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.65rem] font-bold text-slate-600 hover:bg-slate-200 transition">แก้ไข</button>
+              <button onclick="openFaceEnroll('${s.id}','${escapeHtml(s.name)}')" class="rounded-lg bg-sky-50 px-2.5 py-1.5 text-[0.65rem] font-bold text-sky-600 hover:bg-sky-100 transition">📸 Face ID</button>
+            </div>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function openModal(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.classList.add('flex');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('hidden');
+  el.classList.remove('flex');
+  document.body.style.overflow = '';
+}
+
+function openAddStudentModal() {
+  document.getElementById('edit-student-uid').value = '';
+  document.getElementById('student-modal-title').textContent = 'เพิ่ม นศท. ใหม่';
+  ['s-studentId','s-name','s-birthdate','s-nationalId','s-company','s-platoon','s-school','s-schoolCode','s-center']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('s-studentId').disabled = false;
+  openModal('add-student-modal');
+}
+
+function openEditStudent(uid) {
+  var s = allStudents.find(x => x.id === uid);
+  if (!s) return;
+  document.getElementById('edit-student-uid').value = uid;
+  document.getElementById('student-modal-title').textContent = 'แก้ไขข้อมูล นศท.';
+  document.getElementById('s-studentId').value    = s.studentId || '';
+  document.getElementById('s-studentId').disabled = true; // prevent changing ID easily
+  document.getElementById('s-name').value         = s.name || '';
+  document.getElementById('s-birthdate').value    = s.birthdate || '';
+  document.getElementById('s-nationalId').value   = s.nationalId || '';
+  document.getElementById('s-company').value      = s.company || '1';
+  document.getElementById('s-platoon').value      = s.platoon || '';
+  document.getElementById('s-school').value       = s.school || '';
+  document.getElementById('s-schoolCode').value   = s.schoolCode || '';
+  document.getElementById('s-center').value       = s.center || '';
+  openModal('add-student-modal');
+}
+
+async function saveStudent() {
+  var uid = document.getElementById('edit-student-uid').value;
+  var data = {
+    studentId:  document.getElementById('s-studentId').value.trim(),
+    name:       document.getElementById('s-name').value.trim(),
+    birthdate:  document.getElementById('s-birthdate').value.trim(),
+    nationalId: document.getElementById('s-nationalId').value.trim(),
+    company:    document.getElementById('s-company').value,
+    platoon:    document.getElementById('s-platoon').value.trim(),
+    school:     document.getElementById('s-school').value.trim(),
+    schoolCode: document.getElementById('s-schoolCode').value.trim(),
+    center:     document.getElementById('s-center').value.trim(),
+  };
+
+  if (!data.studentId || !data.name || !data.birthdate || !data.nationalId) {
+    showToast('กรุณากรอกข้อมูลที่มีดอกจันให้ครบ', 'error'); return;
+  }
+
+  var btn = document.getElementById('save-student-btn');
+  showLoading(btn, 'กำลังบันทึก...');
+
+  try {
+    if (uid) {
+      await db.collection(COLLECTIONS.USERS).doc(uid).update(data);
+      showToast('แก้ไขข้อมูลสำเร็จ');
+    } else {
+      await adminCreateUser({ ...data, role: ROLES.STUDENT });
+      showToast('เพิ่ม นศท. สำเร็จ');
+    }
+    closeModal('add-student-modal');
+    loadStudents();
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  } finally {
+    hideLoading(btn);
+  }
+}
+
+async function toggleActive(uid, currentlyActive) {
+  var actionText = currentlyActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน';
+  var confirmed = await showConfirmPopup(
+    `ยืนยัน${actionText}?`,
+    `คุณต้องการ${actionText}ผู้ใช้งานรายนี้ใช่หรือไม่?`,
+    actionText,
+    'ยกเลิก',
+    currentlyActive ? 'warning' : 'question'
+  );
+  if (!confirmed) return;
+
+  try {
+    await toggleUserActive(uid, !currentlyActive);
+    showToast(currentlyActive ? 'ปิดใช้งานสำเร็จ' : 'เปิดใช้งานสำเร็จ', 'success');
+    loadStaff();
+  } catch(e) { showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error'); }
+}
+
+// ─── Face Enroll ─────────────────────────────────────────────
+async function openFaceEnroll(uid, name) {
+  enrollTarget = uid;
+  document.getElementById('enroll-name').textContent = name;
+  openModal('face-enroll-modal');
+
+  try {
+    document.getElementById('enroll-status').textContent = 'กำลังโหลด Face AI...';
+    await loadFaceModels();
+    var video = document.getElementById('enroll-video');
+    var canvas = document.getElementById('enroll-canvas');
+    enrollStream = await startCamera(video);
+    startDetectionLoop(video, canvas, count => {
+      document.getElementById('enroll-status').textContent =
+        count === 1 ? '✓ พบใบหน้า — พร้อมบันทึก' : count === 0 ? 'ไม่พบใบหน้า' : `พบ ${count} ใบหน้า (ควรมี 1)`;
+      document.getElementById('enroll-status').className = count === 1 ? 'absolute bottom-3 left-1/2 -translate-x-1/2 rounded-lg bg-emerald-500/80 backdrop-blur-sm px-3 py-1.5 text-xs font-bold text-white z-30 whitespace-nowrap' : 'absolute bottom-3 left-1/2 -translate-x-1/2 rounded-lg bg-rose-500/80 backdrop-blur-sm px-3 py-1.5 text-xs font-bold text-white z-30 whitespace-nowrap';
+    });
+  } catch(e) {
+    document.getElementById('enroll-status').textContent = 'ไม่สามารถเปิดกล้องได้';
+    showToast(e.message, 'error');
+  }
+}
+
+async function doEnroll() {
+  var btn = document.getElementById('enroll-btn');
+  showLoading(btn, 'กำลังบันทึก...');
+  try {
+    stopDetectionLoop();
+    var video = document.getElementById('enroll-video');
+    await enrollFace(video, enrollTarget);
+    showToast('ลงทะเบียน Face ID สำเร็จ!');
+    closeFaceEnroll();
+    loadStudents();
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+    hideLoading(btn);
+  }
+}
+
+function closeFaceEnroll() {
+  stopDetectionLoop();
+  if (enrollStream) { enrollStream.getTracks().forEach(t => t.stop()); enrollStream = null; }
+  closeModal('face-enroll-modal');
+}
+
+function toggleStaffFields() {
+  var role = document.getElementById('st-role').value;
+  var needCompany = (role == '2' || role == '3');
+  var needPlatoon = (role == '2');
+  document.getElementById('st-company-wrap').style.display = needCompany ? 'block' : 'none';
+  document.getElementById('st-platoon-wrap').style.display = needPlatoon ? 'block' : 'none';
+}
+
+// ─── Staff ────────────────────────────────────────────────────
+async function loadStaff() {
+  var el = document.getElementById('staff-table');
+  try {
+    var snap = await db.collection(COLLECTIONS.USERS).where('role','>',ROLES.STUDENT).orderBy('role').get();
+    var staff = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!staff.length) { el.innerHTML = `<div class="p-12 text-center text-slate-400"><p class="font-bold text-forest-900 text-lg">ยังไม่มีเจ้าหน้าที่</p></div>`; return; }
+    el.innerHTML = `
+      <table class="w-full text-left border-collapse min-w-[600px]">
+        <thead>
+          <tr class="bg-slate-50 border-b border-emerald-950/5">
+            <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">ชื่อ / รหัส</th>
+            <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">บทบาท</th>
+            <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">ความรับผิดชอบ</th>
+            <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider text-right">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-emerald-950/5">
+          ${staff.map(s => `
+          <tr class="hover:bg-slate-50/50 transition">
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-3">
+                <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-forest-100 text-[0.65rem] font-black text-forest-700">${initials(s.name)}</div>
+                <div>
+                  <p class="text-sm font-bold text-forest-900">${escapeHtml(s.name||'')}</p>
+                  <p class="text-xs text-slate-500 font-medium">${escapeHtml(s.studentId||'')}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-sm font-medium text-slate-700">
+              <span class="rounded-md bg-slate-100 px-2 py-1 text-[0.65rem] font-bold text-slate-600">${ROLE_NAMES[s.role]||s.role}</span>
+            </td>
+            <td class="px-4 py-3 text-sm text-slate-500">
+              ${s.role === 3 ? `ปี ${escapeHtml(s.company||'-')} / ม. ${escapeHtml(s.platoon||'-')}` : 'ทั้งหมด'}
+            </td>
+            <td class="px-4 py-3 text-right">
+              <button onclick="toggleActive('${s.id}',${s.active!==false})" class="rounded-lg px-2.5 py-1.5 text-[0.65rem] font-bold transition ${s.active!==false ? 'bg-rose-50 text-rose-600 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}">
+                ${s.active!==false ? '🔒 ปิดใช้' : '🔓 เปิดใช้'}
+              </button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch(e) { el.innerHTML = `<div class="p-4 text-red-500 bg-red-50 rounded-xl text-sm font-bold">${e.message}</div>`; }
+}
+
+function openAddStaffModal() {
+  document.getElementById('st-id').value = '';
+  document.getElementById('st-name').value = '';
+  document.getElementById('st-birth').value = '';
+  document.getElementById('st-company').value = '1';
+  document.getElementById('st-platoon').value = '';
+  document.getElementById('st-role').value = '3';
+  toggleStaffFields();
+  openModal('add-staff-modal'); 
+}
+
+async function saveStaff() {
+  var btn = document.getElementById('save-staff-btn');
+  showLoading(btn, 'กำลังบันทึก...');
+  try {
+    await adminCreateUser({
+      studentId: document.getElementById('st-id').value.trim(),
+      name:      document.getElementById('st-name').value.trim(),
+      birthdate: document.getElementById('st-birth').value,
+      role:      parseInt(document.getElementById('st-role').value),
+      company:   document.getElementById('st-company').value.trim(),
+      platoon:   document.getElementById('st-platoon').value.trim(),
+    });
+    closeModal('add-staff-modal');
+    showToast('เพิ่มเจ้าหน้าที่สำเร็จ');
+    loadStaff();
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+    hideLoading(btn);
+  }
+}
+
+// ─── Geofence ─────────────────────────────────────────────────
+async function loadGeoSettings() {
+  var geo = await getGeofence();
+  document.getElementById('geo-lat').value    = geo.center?.lat || '';
+  document.getElementById('geo-lng').value    = geo.center?.lng || '';
+  document.getElementById('geo-radius').value = geo.radius || 200;
+  document.getElementById('map-lat-display').textContent = geo.center?.lat?.toFixed(6) || '--';
+  document.getElementById('map-lng-display').textContent = geo.center?.lng?.toFixed(6) || '--';
+  document.getElementById('geo-current').textContent =
+    `Lat: ${geo.center?.lat || '-'}, Lng: ${geo.center?.lng || '-'}, รัศมี: ${geo.radius || '-'} ม.`;
+}
+
+async function saveGeoSettings() {
+  var lat = document.getElementById('geo-lat').value;
+  var lng = document.getElementById('geo-lng').value;
+  var r   = document.getElementById('geo-radius').value;
+  if (!lat || !lng) { showToast('กรุณากรอกพิกัดให้ครบถ้วน', 'warning'); return; }
+  try {
+    await saveGeofence(lat, lng, r);
+    showToast('บันทึกพิกัดสำเร็จ', 'success');
+    loadGeoSettings();
+  } catch(e) { showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error'); }
+}
+
+async function useMyLocation() {
+  try {
+    var pos = await getCurrentPosition();
+    document.getElementById('geo-lat').value = pos.coords.latitude.toFixed(7);
+    document.getElementById('geo-lng').value = pos.coords.longitude.toFixed(7);
+    document.getElementById('map-lat-display').textContent = pos.coords.latitude.toFixed(6);
+    document.getElementById('map-lng-display').textContent = pos.coords.longitude.toFixed(6);
+    showToast('ดึงพิกัดปัจจุบันสำเร็จ', 'success');
+  } catch(e) { showAlertPopup('ไม่สามารถดึงพิกัดได้', e.message, 'error'); }
+}
+
+// ─── System Stats ─────────────────────────────────────────────
+async function loadSysStats() {
+  var stats = await getSystemStats();
+  document.getElementById('sys-students').textContent = stats.students;
+  document.getElementById('sys-staff').textContent    = stats.staff;
+  document.getElementById('sys-today').textContent    = stats.todayAtt;
+  document.getElementById('sys-schools').textContent  = stats.schools;
+}
+
+async function markAbsentAll() {
+  var confirmed = await showConfirmPopup(
+    'บันทึกขาดอัตโนมัติ?',
+    'คุณต้องการบันทึกสถานะ "ขาด" ให้กับ นศท. ที่ยังไม่ได้เช็คชื่อในวันนี้ใช่หรือไม่?',
+    'บันทึก "ขาด"',
+    'ยกเลิก',
+    'warning'
+  );
+  if (!confirmed) return;
+  try {
+    var uids = allStudents.map(s => s.id);
+    await markAbsentForNoShows(today(), uids);
+    showToast('บันทึก "ขาด" อัตโนมัติสำเร็จ', 'success');
+  } catch(e) {
+    showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+  }
+}
+
+// ─── CSV Import ───────────────────────────────────────────────
+function openImportModal() { openModal('import-modal'); }
+
+function handleCSVUpload(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = e => {
+    csvStudents = parseStudentCSV(e.target.result);
+    var el = document.getElementById('import-preview');
+    el.classList.remove('hidden');
+    document.getElementById('import-count').textContent = `พบข้อมูล ${csvStudents.length} รายการ`;
+    document.getElementById('import-table').innerHTML = `<table class="w-full text-left text-sm whitespace-nowrap">
+      <thead class="bg-slate-50 border-b border-slate-200"><tr><th class="px-4 py-2 font-bold text-slate-500">รหัส</th><th class="px-4 py-2 font-bold text-slate-500">ชื่อ</th><th class="px-4 py-2 font-bold text-slate-500">โรงเรียน</th><th class="px-4 py-2 font-bold text-slate-500">หมวด</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">${csvStudents.slice(0,5).map(s=>`<tr>
+        <td class="px-4 py-2">${escapeHtml(s['studentId']||s['รหัสนศท']||'')}</td>
+        <td class="px-4 py-2 font-medium text-forest-900">${escapeHtml(s['name']||s['ชื่อ']||'')}</td>
+        <td class="px-4 py-2 text-slate-500">${escapeHtml(s['school']||s['โรงเรียน']||'')}</td>
+        <td class="px-4 py-2 text-slate-500">${escapeHtml(s['platoon']||s['หมวด']||'')}</td>
+      </tr>`).join('')}${csvStudents.length>5?`<tr><td colspan="4" class="px-4 py-3 text-slate-400 text-center italic text-xs bg-slate-50">...และอีก ${csvStudents.length-5} รายการ</td></tr>`:''}</tbody>
+    </table>`;
+    document.getElementById('do-import-btn').disabled = false;
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+async function doImport() {
+  if (!csvStudents.length) return;
+  document.getElementById('import-progress').classList.remove('hidden');
+  document.getElementById('do-import-btn').disabled = true;
+  var results = await batchImportStudents(csvStudents);
+  document.getElementById('import-progress-fill').style.width = '100%';
+  document.getElementById('import-progress-text').textContent =
+    `เสร็จสิ้น: สำเร็จ ${results.success}, ผิดพลาด ${results.errors.length}`;
+  if (results.errors.length) {
+    console.error('Import errors:', results.errors);
+    showToast(`นำเข้าสำเร็จ ${results.success}, ผิดพลาด ${results.errors.length} รายการ`, 'error');
+  } else {
+    showToast(`นำเข้าสำเร็จ ${results.success} รายการ`);
+  }
+  closeModal('import-modal');
+  loadStudents();
+}
+
+function downloadCSVTemplate() {
+  var csv = `studentId,name,birthdate,nationalId,year,program,platoon,school,schoolCode,center
+6701001,สมชาย ใจดี,15/01/2005,1-2345-67890-12-3,2,SMART Class,1,โรงเรียนตัวอย่าง,12345,ศูนย์การฝึกนักศึกษาวิชาทหาร
+6701002,สมหญิง รักเรียน,20/03/2005,1-9876-54321-09-8,2,,1,โรงเรียนตัวอย่าง,12345,ศูนย์การฝึกนักศึกษาวิชาทหาร`;
+  var blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url; a.download = 'template_students.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ─── ADMIN RULES ──────────────────────────────────────────────
+async function loadAdminRulesTab() {
+  try {
+    var snap = await db.collection(COLLECTIONS.SETTINGS).doc('attendance-rules').get();
+    if (snap.exists) {
+      var d = snap.data();
+      document.getElementById('rule-system-enabled').value = d.systemEnabled !== false ? 'true' : 'false';
+      document.getElementById('rule-enforce-time').value = d.enforceTimeWindow ? 'true' : 'false';
+      document.getElementById('rule-checkin-start').value = d.checkInStart || '06:00';
+      document.getElementById('rule-checkin-end').value = d.checkInEnd || '09:00';
+      document.getElementById('rule-checkout-start').value = d.checkOutStart || '14:00';
+      document.getElementById('rule-checkout-end').value = d.checkOutEnd || '18:00';
+      document.getElementById('rule-min-sessions').value = d.minSessions || 10;
+    }
+  } catch(e) {}
+}
+
+async function saveAdminRules() {
+  try {
+    var rules = {
+      systemEnabled: document.getElementById('rule-system-enabled').value === 'true',
+      enforceTimeWindow: document.getElementById('rule-enforce-time').value === 'true',
+      checkInStart: document.getElementById('rule-checkin-start').value,
+      checkInEnd: document.getElementById('rule-checkin-end').value,
+      checkOutStart: document.getElementById('rule-checkout-start').value,
+      checkOutEnd: document.getElementById('rule-checkout-end').value,
+      minSessions: parseInt(document.getElementById('rule-min-sessions').value) || 10,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentUser.uid
+    };
+    await db.collection(COLLECTIONS.SETTINGS).doc('attendance-rules').set(rules, { merge: true });
+    showToast('บันทึกเวลาและเงื่อนไขสำเร็จ', 'success');
+  } catch(e) {
+    showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+  }
+}
+
+// ─── ADMIN ATTENDANCE RECORD MANAGEMENT ────────────────────────
+var _adminAttRecords = [];
+
+async function loadAdminAttendanceTab() {
+  var dateEl = document.getElementById('admin-att-date');
+  if (!dateEl.value) {
+    dateEl.value = today();
+  }
+  await loadAdminAttendanceRecords();
+}
+
+async function loadAdminAttendanceRecords() {
+  var dateStr = document.getElementById('admin-att-date').value || today();
+  var tableEl = document.getElementById('admin-attendance-table');
+  tableEl.innerHTML = `<div class="flex items-center justify-center p-12 text-slate-400"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>`;
+  try {
+    _adminAttRecords = await getDailyRecords(dateStr);
+    filterAdminAttendanceTable();
+  } catch(e) {
+    tableEl.innerHTML = `<div class="p-4 text-red-500 bg-red-50 rounded-xl text-sm font-bold">เกิดข้อผิดพลาด: ${e.message}</div>`;
+  }
+}
+
+function filterAdminAttendanceTable() {
+  var search = (document.getElementById('admin-att-search').value || '').toLowerCase();
+  var cp = document.getElementById('admin-att-company').value;
+  var st = document.getElementById('admin-att-status').value;
+
+  var filtered = _adminAttRecords.filter(r => {
+    if (search && !((r.name || '').toLowerCase().includes(search) || (r.studentId || '').includes(search))) return false;
+    if (cp && String(r.company) !== String(cp)) return false;
+    if (st && r.status !== st) return false;
+    return true;
+  });
+
+  renderAdminAttendanceTable(filtered);
+}
+
+function renderAdminAttendanceTable(list) {
+  var tableEl = document.getElementById('admin-attendance-table');
+  if (!list.length) {
+    tableEl.innerHTML = `<div class="p-12 text-center text-slate-400"><p class="font-bold text-forest-900 text-lg">ไม่พบข้อมูลการเช็คชื่อ</p><p class="text-sm">ไม่มีบันทึกในวันที่เลือก หรือตามเงื่อนไขการค้นหา</p></div>`;
+    return;
+  }
+
+  tableEl.innerHTML = `
+    <table class="w-full text-left text-sm whitespace-nowrap">
+      <thead class="bg-slate-50 border-b border-slate-200">
+        <tr>
+          <th class="px-4 py-3 font-bold text-slate-700">รหัส นศท.</th>
+          <th class="px-4 py-3 font-bold text-slate-700">ชื่อ–นามสกุล</th>
+          <th class="px-4 py-3 font-bold text-slate-700">ชั้นปี/หมวด</th>
+          <th class="px-4 py-3 font-bold text-slate-700">เวลาเข้า (In)</th>
+          <th class="px-4 py-3 font-bold text-slate-700">เวลาออก (Out)</th>
+          <th class="px-4 py-3 font-bold text-slate-700 text-center">สถานะ</th>
+          <th class="px-4 py-3 font-bold text-slate-700 text-right">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        ${list.map(r => {
+          var inTime = r.checkInTime ? formatTimeSec(r.checkInTime) : '--:--:--';
+          var outTime = r.checkOutTime ? formatTimeSec(r.checkOutTime) : '--:--:--';
+          var statusHtml = statusBadge(r.status);
+
+          return `
+            <tr class="hover:bg-slate-50/80 transition">
+              <td class="px-4 py-3 font-mono font-bold text-forest-900">${escapeHtml(r.studentId || r.uid)}</td>
+              <td class="px-4 py-3 font-bold text-slate-800">${escapeHtml(r.name || '-')}</td>
+              <td class="px-4 py-3 text-slate-500 text-xs font-semibold">ปี ${r.company || '-'} / หมวด ${r.platoon || '-'}</td>
+              <td class="px-4 py-3 font-mono text-emerald-700 font-bold">${inTime}</td>
+              <td class="px-4 py-3 font-mono text-amber-700 font-bold">${outTime}</td>
+              <td class="px-4 py-3 text-center">${statusHtml}</td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button onclick="openEditAttendanceModal('${r.uid}')" class="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition">✏️ แก้ไข</button>
+                  <button onclick="deleteAttendanceRecord('${r.uid}')" class="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-100 transition">🗑️ ลบ</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// EDIT ATTENDANCE MODAL LOGIC
+function openEditAttendanceModal(uid) {
+  var record = _adminAttRecords.find(r => r.uid === uid);
+  if (!record) return;
+  document.getElementById('att-edit-uid').value = uid;
+  document.getElementById('att-edit-date').value = record.date || document.getElementById('admin-att-date').value;
+  document.getElementById('att-edit-name').value = record.name || '';
+
+  document.getElementById('att-edit-checkin').value = record.checkInTime ? formatTimeSec(record.checkInTime) : '';
+  document.getElementById('att-edit-checkout').value = record.checkOutTime ? formatTimeSec(record.checkOutTime) : '';
+  document.getElementById('att-edit-status').value = record.status || 'present';
+  document.getElementById('att-edit-note').value = record.note || '';
+
+  openModal('edit-attendance-modal');
+}
+
+async function saveEditedAttendance() {
+  var uid = document.getElementById('att-edit-uid').value;
+  var dateStr = document.getElementById('att-edit-date').value;
+  var inTimeStr = document.getElementById('att-edit-checkin').value.trim();
+  var outTimeStr = document.getElementById('att-edit-checkout').value.trim();
+  var status = document.getElementById('att-edit-status').value;
+  var note = document.getElementById('att-edit-note').value.trim();
+
+  if (!uid || !dateStr) { showToast('ข้อมูลไม่ครบถ้วน', 'warning'); return; }
+
+  var checkInTime = null;
+  var checkOutTime = null;
+
+  if (inTimeStr && inTimeStr !== '--:--:--') {
+    var parts = inTimeStr.split(':');
+    var d = strToDate(dateStr);
+    d.setHours(parseInt(parts[0]||0), parseInt(parts[1]||0), parseInt(parts[2]||0));
+    checkInTime = firebase.firestore.Timestamp.fromDate(d);
+  }
+
+  if (outTimeStr && outTimeStr !== '--:--:--') {
+    var parts = outTimeStr.split(':');
+    var d = strToDate(dateStr);
+    d.setHours(parseInt(parts[0]||0), parseInt(parts[1]||0), parseInt(parts[2]||0));
+    checkOutTime = firebase.firestore.Timestamp.fromDate(d);
+  }
+
+  try {
+    var ref = db.collection(COLLECTIONS.ATTENDANCE).doc(dateStr).collection('records').doc(uid);
+    await ref.set({
+      status: status,
+      checkInTime: checkInTime,
+      checkOutTime: checkOutTime,
+      note: note,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentUser.uid
+    }, { merge: true });
+
+    showToast('แก้ไขข้อมูลบันทึกสำเร็จ', 'success');
+    closeModal('edit-attendance-modal');
+    loadAdminAttendanceRecords();
+  } catch(e) {
+    showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+  }
+}
+
+async function deleteAttendanceRecord(uid) {
+  var dateStr = document.getElementById('admin-att-date').value || today();
+  var confirmed = await showConfirmPopup('ลบบันทึกการเช็คชื่อ?', 'คุณต้องการลบบันทึกการเช็คชื่อของ นศท. รายนี้ในวันที่ ' + dateStr + ' ใช่หรือไม่?', 'ลบข้อมูล', 'ยกเลิก', 'warning');
+  if (!confirmed) return;
+
+  try {
+    await db.collection(COLLECTIONS.ATTENDANCE).doc(dateStr).collection('records').doc(uid).delete();
+    showToast('ลบบันทึกการเช็คชื่อสำเร็จ', 'success');
+    loadAdminAttendanceRecords();
+  } catch(e) {
+    showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+  }
+}
+
+// ADD ATTENDANCE MODAL LOGIC
+async function openAddAttendanceModal() {
+  document.getElementById('att-add-date').value = document.getElementById('admin-att-date').value || today();
+  document.getElementById('att-add-checkin').value = '07:30:00';
+  document.getElementById('att-add-checkout').value = '16:30:00';
+  document.getElementById('att-add-status').value = 'present';
+  document.getElementById('att-add-note').value = '';
+
+  var select = document.getElementById('att-add-uid');
+  if (allStudents && allStudents.length) {
+    select.innerHTML = allStudents.map(s => `<option value="${s.id}">${escapeHtml(s.studentId || '')} - ${escapeHtml(s.name || '')}</option>`).join('');
+  } else {
+    var snap = await db.collection(COLLECTIONS.USERS).where('role','==',ROLES.STUDENT).get();
+    allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    select.innerHTML = allStudents.map(s => `<option value="${s.id}">${escapeHtml(s.studentId || '')} - ${escapeHtml(s.name || '')}</option>`).join('');
+  }
+  openModal('add-attendance-modal');
+}
+
+async function saveNewAttendance() {
+  var uid = document.getElementById('att-add-uid').value;
+  var dateStr = document.getElementById('att-add-date').value;
+  var inTimeStr = document.getElementById('att-add-checkin').value.trim();
+  var outTimeStr = document.getElementById('att-add-checkout').value.trim();
+  var status = document.getElementById('att-add-status').value;
+  var note = document.getElementById('att-add-note').value.trim();
+
+  if (!uid || !dateStr) { showToast('กรุณาเลือก นศท. และวันที่', 'warning'); return; }
+  var student = (allStudents || []).find(s => s.id === uid) || {};
+
+  var checkInTime = null;
+  var checkOutTime = null;
+
+  if (inTimeStr && inTimeStr !== '--:--:--') {
+    var parts = inTimeStr.split(':');
+    var d = strToDate(dateStr);
+    d.setHours(parseInt(parts[0]||0), parseInt(parts[1]||0), parseInt(parts[2]||0));
+    checkInTime = firebase.firestore.Timestamp.fromDate(d);
+  }
+
+  if (outTimeStr && outTimeStr !== '--:--:--') {
+    var parts = outTimeStr.split(':');
+    var d = strToDate(dateStr);
+    d.setHours(parseInt(parts[0]||0), parseInt(parts[1]||0), parseInt(parts[2]||0));
+    checkOutTime = firebase.firestore.Timestamp.fromDate(d);
+  }
+
+  try {
+    var ref = db.collection(COLLECTIONS.ATTENDANCE).doc(dateStr).collection('records').doc(uid);
+    await ref.set({
+      uid: uid,
+      studentId: student.studentId || '',
+      name: student.name || '',
+      company: student.company || '',
+      platoon: student.platoon || '',
+      school: student.school || '',
+      date: dateStr,
+      status: status,
+      checkInTime: checkInTime,
+      checkOutTime: checkOutTime,
+      note: note,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: currentUser.uid
+    }, { merge: true });
+
+    showToast('เพิ่มบันทึกเวลาเรียนสำเร็จ', 'success');
+    closeModal('add-attendance-modal');
+    document.getElementById('admin-att-date').value = dateStr;
+    loadAdminAttendanceRecords();
+  } catch(e) {
+    showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+  }
+}
+</script>
+</body>
+</html>

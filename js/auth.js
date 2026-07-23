@@ -1,0 +1,450 @@
+// ============================================================
+// auth.js — Authentication & Session Management
+// ============================================================
+
+// ─── Login ──────────────────────────────────────────────────
+async function login(studentId, birthdate) {
+  const password = birthdateToPassword(birthdate);
+  const rawId = (studentId || '').trim();
+  const candidates = [];
+
+  if (rawId) candidates.push(rawId);
+
+  try {
+    const userSnap = await db.collection(COLLECTIONS.USERS)
+      .where('studentId', '==', rawId)
+      .limit(1)
+      .get();
+
+    if (!userSnap.empty) {
+      const userData = userSnap.docs[0].data();
+      if (userData.nationalId) candidates.push(userData.nationalId);
+      if (userData.email) candidates.push(userData.email.replace(/@nstda\.system$/i, ''));
+    }
+  } catch (e) {
+    // continue with the direct login attempt if lookup fails
+  }
+
+  const uniqueEmails = [...new Set(candidates.map(id => birthdateToEmail(id)))];
+  let lastError = null;
+
+  for (const email of uniqueEmails) {
+    try {
+      return await auth.signInWithEmailAndPassword(email, password);
+    } catch (err) {
+      lastError = err;
+      if (err.code !== 'auth/user-not-found' && err.code !== 'auth/wrong-password' && err.code !== 'auth/invalid-login-credentials') {
+        throw err;
+      }
+    }
+  }
+
+  throw lastError || new Error('ข้อมูลเข้าสู่ระบบไม่ถูกต้อง');
+}
+
+// ─── Logout ─────────────────────────────────────────────────
+async function logout() {
+  await auth.signOut();
+  window.location.href = 'index.html';
+}
+
+// ─── Get Current User Data ──────────────────────────────────
+async function getCurrentUser() {
+  return new Promise(resolve => {
+    auth.onAuthStateChanged(async user => {
+      if (!user) { resolve(null); return; }
+      const snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+      if (!snap.exists) { resolve(null); return; }
+      resolve({ uid: user.uid, ...snap.data() });
+    });
+  });
+}
+
+// ─── Auth Guard ──────────────────────────────────────────────
+async function guardPage(allowedRoles = []) {
+  const user = await getCurrentUser();
+  if (!user) { window.location.href = 'index.html'; return null; }
+  if (allowedRoles.length && !allowedRoles.includes(user.role)) {
+    window.location.href = 'dashboard.html';
+    return null;
+  }
+  return user;
+}
+
+// ─── Create Account (Admin use) ──────────────────────────────
+async function createStudentAccount(studentData) {
+  const { studentId, birthdate, name, role, company, platoon,
+          school, center, year, program, nationalId } = studentData;
+
+  const isStudent = !role || role === ROLES.STUDENT;
+  const username  = isStudent ? (studentId || nationalId || '') : studentId;
+  const email     = birthdateToEmail(username);
+  const password = birthdateToPassword(birthdate);
+
+  // Create Firebase Auth account
+  const cred = await auth.createUserWithEmailAndPassword(email, password);
+  const uid  = cred.user.uid;
+
+  // Save profile to Firestore
+  await db.collection(COLLECTIONS.USERS).doc(uid).set({
+    studentId, name, role: role || ROLES.STUDENT,
+    company, platoon, school, center,
+    year, program, nationalId, birthdate,
+    faceDescriptor: null,
+    profilePhotoUrl: '',
+    email,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    active: true,
+  });
+
+  return uid;
+}
+
+// ─── Update Face Descriptor ──────────────────────────────────
+async function saveFaceDescriptor(uid, descriptor) {
+  await db.collection(COLLECTIONS.USERS).doc(uid).update({
+    faceDescriptor: Array.from(descriptor),
+    faceUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+// ─── Render User Info in Topbar ─────────────────────────────
+// ─── Render User Info in Topbar ─────────────────────────────
+function renderTopbarUser(user) {
+  const el = document.getElementById('topbar-user');
+  if (!el || !user) return;
+  const name = user.name || user.studentId || 'ผู้ใช้งาน';
+  const userRole = user.role || ROLES.STUDENT;
+  const roleName = ROLE_NAMES[userRole] || 'นักศึกษาวิชาทหาร';
+
+  el.innerHTML = `
+    <div class="flex items-center gap-2 rounded-xl border border-emerald-950/5 bg-white py-1.5 pl-1.5 pr-2.5 cursor-pointer" id="user-avatar" title="${escapeHtml(name)}">
+      <div class="grid h-7 w-7 place-items-center rounded-lg bg-forest-100 text-[.62rem] font-black text-forest-700">
+        ${initials(name)}
+      </div>
+      <span class="hidden text-xs font-bold text-forest-900 sm:block">${escapeHtml(name)}</span>
+    </div>
+    <div class="hidden" id="user-menu" style="
+      position:absolute;top:52px;right:0;min-width:200px;
+      background:white;border:1px solid #e8f0eb;
+      border-radius:1.15rem;padding:8px;z-index:200;box-shadow:0 12px 40px rgba(20,66,46,.08);color:#17382a;
+    ">
+      <div style="padding:12px 12px 10px;border-bottom:1px solid #e8f0eb;margin-bottom:6px;">
+        <div class="font-bold text-sm">${escapeHtml(name)}</div>
+        <div class="text-xs text-slate-500">${roleName}</div>
+        <div class="text-xs text-slate-500">${user.studentId || ''}</div>
+      </div>
+      <button onclick="openSwitchAccountModal()" class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:text-forest-700 w-full mb-1 text-left">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 110-8 4 4 0 010 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        สลับบัญชี
+      </button>
+      <button onclick="logout()" class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:text-red-500 w-full text-left border-t border-slate-50 pt-2 mt-1">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 00-2-2h-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ออกจากระบบ
+      </button>
+    </div>
+  `;
+  document.getElementById('user-avatar')?.addEventListener('click', () => {
+    document.getElementById('user-menu')?.classList.toggle('hidden');
+  });
+  document.addEventListener('click', e => {
+    if (!el.contains(e.target)) document.getElementById('user-menu')?.classList.add('hidden');
+  });
+}
+
+// ─── Render Sidebar by Role ──────────────────────────────────
+function renderSidebar(user) {
+  const nav = document.getElementById('sidebar-nav');
+  if (!nav || !user) return;
+  const userRole = user.role || ROLES.STUDENT;
+
+  const icons = {
+    dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>',
+    attendance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="8" stroke-width="2"/><path d="M12 8v4l3 2" stroke-width="2" stroke-linecap="round"/></svg>',
+    midday: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M12 3v18" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="8" stroke-width="2"/></svg>',
+    leave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 3v4a1 1 0 001 1h4M5 3h9l5 5v13H5a1 1 0 01-1-1V4a1 1 0 011-1zM8 13h8M8 17h6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18M7 15l3-4 3 2 4-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    team: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    reports: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19V5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1zM8 16v-3m4 3V8m4 8v-5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    approval: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 12l2 2 4-4M12 22a10 10 0 100-20 10 10 0 000 20z" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3" stroke-width="2"/><path d="M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 00-1.88-.34 1.7 1.7 0 00-1.04 1.56V20.3h-3v-.08A1.7 1.7 0 0010.66 18.66a1.7 1.7 0 00-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 007 15a1.7 1.7 0 00-1.56-1.04H5.3v-3h.14A1.7 1.7 0 007 9.92a1.7 1.7 0 00-.34-1.88l-.06-.06 2.12-2.12.06.06a1.7 1.7 0 001.88.34A1.7 1.7 0 0011.7 4.7v-.08h3v.08a1.7 1.7 0 001.04 1.56 1.7 1.7 0 001.88-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 00-.34 1.88 1.7 1.7 0 001.56 1.04h.08v3h-.08A1.7 1.7 0 0019.4 15z" stroke-width="1.5" stroke-linejoin="round"/></svg>'
+  };
+
+  const allItems = [
+    // นศท. (role=1) — หน้าหลักใหม่
+    { roles:[1], href:'student.html',    icon: icons.dashboard, label:'หน้าหลัก' },
+    { roles:[1], href:'leave-request.html',icon: icons.leave, label:'ขอลากิจ / ลาป่วย' },
+    // Level 2+
+    { roles:[2,3,4,5,6], href:'dashboard.html',      icon: icons.dashboard, label:'ศูนย์ควบคุม' },
+    { roles:[2,3,4,5,6], href:'reports.html',        icon: icons.reports, label:'รายงานภาพรวม' },
+    { roles:[5,6],       href:'leave-approval.html', icon: icons.approval, label:'อนุมัติใบลา', badge:'pending-count' },
+    { roles:[2,3,4,5,6], href:'midday-check.html',   icon: icons.team, label:'ติดตามกำลังพล' },
+    { roles:[3,4,5,6],   href:'admin.html',          icon: icons.settings, label:'จัดการข้อมูลระบบ' },
+  ];
+
+  nav.innerHTML = allItems
+    .filter(item => item.roles.includes(userRole))
+    .map(item => {
+      const navId = 'nav-' + item.href.replace('.html','').replace('#','history');
+      return `
+        <a href="${item.href}" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-forest-50 hover:text-forest-700" id="${navId}">
+          <div class="h-5 w-5 opacity-70 [&>svg]:w-full [&>svg]:h-full">${item.icon}</div>
+          <span>${item.label}</span>
+          ${item.badge === 'pending-count' ? `<span class="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[0.65rem] font-bold text-white hidden" id="pending-badge">0</span>` : ''}
+        </a>
+      `;
+    }).join('');
+
+  // Load pending leave count for level 5+
+  if (userRole >= 5) {
+    db.collection(COLLECTIONS.LEAVE)
+      .where('status','==','pending')
+      .get()
+      .then(snap => {
+        const badge = document.getElementById('pending-badge');
+        if (badge && snap.size > 0) {
+          badge.textContent = snap.size;
+          badge.classList.remove('hidden');
+        }
+      });
+  }
+
+  setActiveNav();
+}
+
+function setActiveNav() {
+  var path = window.location.pathname.split('/').pop() || 'index.html';
+  document.querySelectorAll('.nav-item').forEach(function(item) {
+    var href = item.getAttribute('href');
+    if (href && href !== '#' && href.split('?')[0] === path) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
+  });
+}
+
+// ─── Local Account Management Helpers ─────────────────────────
+const SAVED_ACCOUNTS_KEY = 'rd_saved_accounts';
+
+function getSavedAccounts() {
+  try {
+    return JSON.parse(localStorage.getItem(SAVED_ACCOUNTS_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveAccount(studentId, birthdate, name, role, uid) {
+  if (!studentId) return;
+  const accounts = getSavedAccounts();
+  const index = accounts.findIndex(a => a.studentId === studentId);
+  const accountData = { studentId, birthdate, name, role, uid, lastLogin: Date.now() };
+  if (index >= 0) {
+    accounts[index] = accountData;
+  } else {
+    accounts.push(accountData);
+  }
+  localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(accounts));
+}
+
+function removeAccount(studentId) {
+  let accounts = getSavedAccounts();
+  accounts = accounts.filter(a => a.studentId !== studentId);
+  localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(accounts));
+}
+
+// ─── Account Switcher Modal & Handlers ─────────────────────────
+function openSwitchAccountModal() {
+  let modal = document.getElementById('switch-account-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'switch-account-modal';
+    modal.className = 'modal-backdrop';
+    modal.style.zIndex = '1000';
+    
+    modal.innerHTML = `
+      <div class="modal-card !max-w-md flex flex-col p-0 overflow-hidden" style="max-width: 440px;">
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-emerald-950/5 px-5 py-4 bg-slate-50 shrink-0">
+          <div>
+            <h3 class="font-extrabold text-forest-900 text-base">สลับบัญชีผู้ใช้</h3>
+            <p class="text-xs text-slate-500 mt-0.5">เลือกบัญชี หรือเพิ่มบัญชีใหม่</p>
+          </div>
+          <button class="icon-btn !h-8 !w-8 bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-500 hover:text-forest-900 font-bold" onclick="closeModal('switch-account-modal')">✕</button>
+        </div>
+        
+        <!-- Saved Accounts List -->
+        <div class="p-5 overflow-y-auto max-h-[40vh] space-y-3" id="switch-accounts-list">
+          <!-- Dynamically populated -->
+        </div>
+
+        <!-- Divider / Add Account Button -->
+        <div class="px-5 pb-4 shrink-0">
+          <button onclick="toggleSwitchAddAccountForm()" class="w-full flex items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-forest-50 py-2.5 text-xs font-extrabold text-forest-700 hover:bg-forest-100 transition">
+            <span>+</span> เพิ่มบัญชีใหม่
+          </button>
+        </div>
+
+        <!-- Add Account Inline Form -->
+        <div class="px-5 pb-5 border-t border-slate-50 bg-slate-50/50 hidden" id="switch-add-account-form-wrapper">
+          <form id="switch-add-account-form" onsubmit="handleSwitchAddAccountSubmit(event)" class="pt-4 space-y-3">
+            <h4 class="text-xs font-bold text-forest-900">เพิ่มบัญชีผู้ใช้งาน</h4>
+            <div>
+              <label class="mb-1 block text-[10px] font-bold text-slate-500 uppercase">เลขประจำตัว นศท. / รหัสเจ้าหน้าที่</label>
+              <input type="text" id="switch-student-id" placeholder="ระบุรหัสผู้ใช้งาน" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-forest-900 outline-none focus:border-forest-600 transition">
+            </div>
+            <div>
+              <label class="mb-1 block text-[10px] font-bold text-slate-500 uppercase">รหัสผ่าน (วันเกิด วว/ดด/ปปปป)</label>
+              <input type="text" id="switch-birthdate" placeholder="เช่น 15/01/2005" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-forest-900 outline-none focus:border-forest-600 transition">
+            </div>
+            <button type="submit" id="switch-login-btn" class="w-full rounded-xl bg-forest-600 py-2.5 text-xs font-bold text-white hover:bg-forest-700 transition">
+              เข้าสู่ระบบและบันทึกบัญชี
+            </button>
+          </form>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  // Populate Accounts
+  renderSavedAccountsList();
+  
+  // Hide Add Account Form by default
+  document.getElementById('switch-add-account-form-wrapper').classList.add('hidden');
+  
+  openModal('switch-account-modal');
+}
+
+function renderSavedAccountsList() {
+  const container = document.getElementById('switch-accounts-list');
+  if (!container) return;
+  
+  const accounts = getSavedAccounts();
+  const currentUid = auth.currentUser ? auth.currentUser.uid : null;
+  
+  if (accounts.length === 0) {
+    container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs font-medium">ยังไม่มีบัญชีที่บันทึกไว้</div>`;
+    return;
+  }
+  
+  let html = '';
+  accounts.forEach(a => {
+    const isCurrent = a.uid === currentUid;
+    const roleName = ROLE_NAMES[a.role] || 'ผู้ใช้งาน';
+    
+    html += `
+      <div class="flex items-center justify-between p-3 rounded-xl border ${isCurrent ? 'border-forest-600 bg-forest-50/30' : 'border-slate-100 bg-white hover:border-forest-100'} transition gap-2">
+        <div class="flex items-center gap-3 cursor-pointer min-w-0 flex-1" ${isCurrent ? '' : `onclick="switchAccount('${a.studentId}', '${a.birthdate}')"`}>
+          <div class="grid h-8 w-8 shrink-0 place-items-center rounded-lg ${isCurrent ? 'bg-forest-600 text-white' : 'bg-slate-50 text-forest-700'} text-[10px] font-bold">
+            ${initials(a.name || 'น ศ')}
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-bold text-forest-900 truncate">${escapeHtml(a.name || '-')}</span>
+              ${isCurrent ? '<span class="rounded bg-forest-100 px-1.5 py-0.5 text-[8px] font-extrabold text-forest-700">ปัจจุบัน</span>' : ''}
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono">${roleName} · ${escapeHtml(a.studentId)}</span>
+          </div>
+        </div>
+        <button onclick="deleteSavedAccount('${a.studentId}')" class="h-7 w-7 rounded-lg border border-slate-100 bg-white flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-100 transition shrink-0" title="ลบบัญชี">
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+}
+
+function toggleSwitchAddAccountForm() {
+  const form = document.getElementById('switch-add-account-form-wrapper');
+  if (form) {
+    form.classList.toggle('hidden');
+  }
+}
+
+async function handleSwitchAddAccountSubmit(event) {
+  event.preventDefault();
+  const studentId = document.getElementById('switch-student-id').value.trim();
+  const birthdate = document.getElementById('switch-birthdate').value.trim();
+  const btn = document.getElementById('switch-login-btn');
+  
+  if (!studentId || !birthdate) return;
+  
+  showLoading(btn, 'กำลังตรวจสอบ...');
+  
+  try {
+    const cred = await login(studentId, birthdate);
+    const userSnap = await db.collection(COLLECTIONS.USERS).doc(cred.user.uid).get();
+    let name = 'ผู้ใช้งาน';
+    let role = 1;
+    if (userSnap.exists) {
+      const data = userSnap.data();
+      name = data.name || name;
+      role = data.role || role;
+    }
+    
+    saveAccount(studentId, birthdate, name, role, cred.user.uid);
+    closeModal('switch-account-modal');
+    
+    if (typeof Swal !== 'undefined') {
+      await Swal.fire({
+        icon: 'success',
+        title: 'เพิ่มบัญชีและเข้าสู่ระบบสำเร็จ',
+        timer: 1200,
+        showConfirmButton: false
+      });
+    }
+    
+    window.location.href = role === 1 ? 'student.html' : 'dashboard.html';
+  } catch (err) {
+    console.error(err);
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: err.message || 'รหัสผ่านหรือบัญชีไม่ถูกต้อง' });
+    } else {
+      alert('เข้าสู่ระบบไม่สำเร็จ: ' + err.message);
+    }
+    hideLoading(btn);
+  }
+}
+
+async function switchAccount(studentId, birthdate) {
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      title: 'กำลังสลับบัญชี...',
+      text: 'กรุณารอสักครู่',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+  }
+  
+  try {
+    const cred = await login(studentId, birthdate);
+    const userSnap = await db.collection(COLLECTIONS.USERS).doc(cred.user.uid).get();
+    let name = 'ผู้ใช้งาน';
+    let role = 1;
+    if (userSnap.exists) {
+      const data = userSnap.data();
+      name = data.name || name;
+      role = data.role || role;
+    }
+    
+    saveAccount(studentId, birthdate, name, role, cred.user.uid);
+    
+    window.location.href = role === 1 ? 'student.html' : 'dashboard.html';
+  } catch (err) {
+    console.error(err);
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({ icon: 'error', title: 'สลับบัญชีไม่สำเร็จ', text: err.message || 'กรุณาลองใหม่อีกครั้ง' });
+    } else {
+      alert('สลับบัญชีไม่สำเร็จ: ' + err.message);
+    }
+  }
+}
+
+function deleteSavedAccount(studentId) {
+  removeAccount(studentId);
+  renderSavedAccountsList();
+}

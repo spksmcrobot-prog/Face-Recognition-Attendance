@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รายงานสรุป | ระบบเช็คชื่อ นศท.</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+  .report-tab.active { border-color: #159a61 !important; background-color: #e5f1ea !important; color: #17382a !important; font-weight: 700 !important; box-shadow: 0 2px 8px rgba(21,154,97,0.1) !important; }
+</style>
+</head>
+<body class="bg-[#f6faf8] text-[#17382a] font-sans">
+  <div id="sidebackdrop" class="fixed inset-0 z-30 hidden bg-slate-900/25 backdrop-blur-[1px] print:hidden" onclick="toggleSidebar()"></div>
+  
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-[17.25rem] flex-col border-r border-emerald-950/5 bg-white px-4 py-5 transition-transform duration-250 lg:translate-x-0 -translate-x-full print:hidden">
+    <div class="mb-8 flex items-center gap-3 px-2">
+      <img src="https://mstc23.rta.mi.th/amc23/img/23png.png" alt="Logo" class="h-10 w-10 object-contain rounded-xl drop-shadow-md">
+      <div>
+        <p class="text-[1.05rem] font-bold tracking-tight text-forest-900">รด. Check</p>
+        <p class="text-[.68rem] font-medium text-slate-400">ศูนย์เช็คเวลาเรียน</p>
+      </div>
+    </div>
+    <nav id="sidebar-nav" class="space-y-1"></nav>
+    <div class="mt-auto rounded-2xl bg-forest-50 p-3.5 mb-3 hidden" id="sidebar-user-card">
+       <div class="flex items-center gap-2 text-[.72rem] font-bold text-forest-700">
+         <div class="grid h-7 w-7 place-items-center rounded-lg bg-forest-100 text-[.62rem] font-black text-forest-700" id="sidebar-avatar">?</div>
+         <div>
+            <div id="sidebar-name" class="truncate w-[140px]">--</div>
+            <div id="sidebar-role" class="text-[0.65rem] text-forest-600/80">--</div>
+         </div>
+       </div>
+    </div>
+    <button class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:text-red-500" onclick="logout()">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 00-2-2h-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> ออกจากระบบ
+    </button>
+  </aside>
+
+  <main class="min-h-screen lg:ml-[17.25rem]">
+    <header class="sticky top-0 z-20 flex h-[4.7rem] items-center justify-between border-b border-emerald-950/5 bg-[#f6faf8]/90 px-4 backdrop-blur-md sm:px-7 lg:px-9 print:hidden">
+      <div class="flex items-center gap-3">
+        <button class="icon-btn lg:hidden" id="menu-btn" aria-label="เปิดเมนู">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div>
+          <p class="text-base font-bold text-forest-900 sm:text-lg">รายงานสรุป</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <button onclick="exportReport()" class="hidden sm:flex rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 items-center gap-2"><span>📥</span> Export CSV</button>
+        <button onclick="window.print()" class="hidden sm:flex rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 items-center gap-2"><span>🖨</span> พิมพ์</button>
+        <a href="dashboard.html" class="hidden sm:flex text-xs font-bold text-forest-600 hover:underline mr-2">← กลับหน้าหลัก</a>
+        <div id="topbar-user" class="relative"></div>
+      </div>
+    </header>
+    
+    <div class="mx-auto max-w-[1200px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8" id="page-body">
+      
+      <!-- Tabs -->
+      <div class="mb-8 flex gap-2 overflow-x-auto pb-2 scrollbar-hide print:hidden">
+        <button class="report-tab active shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-emerald-300" onclick="switchTab('attendance',this)">📋 การเข้าเรียน</button>
+        <button class="report-tab shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-emerald-300" onclick="switchTab('schools',this)">🏫 สถานศึกษา</button>
+        <button class="report-tab shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-emerald-300" onclick="switchTab('leave',this)">📄 ใบลา</button>
+      </div>
+
+      <!-- ─── ATTENDANCE TAB ─── -->
+      <div id="tab-attendance">
+        <!-- Filters -->
+        <div class="card p-5 sm:p-6 mb-6 print:hidden border border-emerald-950/10 shadow-sm bg-gradient-to-br from-white via-white to-emerald-50/20">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+              <div class="h-10 w-10 grid place-items-center rounded-xl bg-emerald-100/70 text-emerald-700 text-lg font-bold shadow-xs shrink-0">
+                🔍
+              </div>
+              <div>
+                <h3 class="font-extrabold text-forest-900 text-base sm:text-lg">ตัวกรองรายงานการเข้าเรียน</h3>
+                <p class="text-xs text-slate-400 font-medium">เลือกช่วงวันที่ หรือใช้ปุ่มเลือกด่วนเพื่อดูรายงานย้อนหลัง</p>
+              </div>
+            </div>
+            
+            <!-- Quick Date Presets -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-[0.68rem] font-bold text-slate-400 uppercase tracking-wider mr-1">เลือกด่วน:</span>
+              <button type="button" class="preset-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-xs" onclick="setDatePreset('7days', this)">7 วันล่าสุด</button>
+              <button type="button" class="preset-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="setDatePreset('month', this)">เดือนนี้</button>
+              <button type="button" class="preset-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="setDatePreset('30days', this)">30 วันล่าสุด</button>
+              <button type="button" class="preset-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="setDatePreset('today', this)">วันนี้</button>
+            </div>
+          </div>
+
+          <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 items-end">
+            <div class="min-w-0">
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>📅</span> วันที่เริ่ม
+              </label>
+              <input type="date" id="filter-start" class="w-full min-w-0 rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition box-border">
+            </div>
+            <div class="min-w-0">
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>📅</span> วันที่สิ้นสุด
+              </label>
+              <input type="date" id="filter-end" class="w-full min-w-0 rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition box-border">
+            </div>
+            <div class="min-w-0">
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>🎓</span> ชั้นปี
+              </label>
+              <select id="filter-company" class="w-full min-w-0 rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition disabled:bg-slate-50 disabled:text-slate-500">
+                <option value="">ทั้งหมด</option>
+                <option value="1">ชั้นปีที่ 1</option>
+                <option value="2">ชั้นปีที่ 2</option>
+                <option value="3">ชั้นปีที่ 3</option>
+                <option value="4">ชั้นปีที่ 4</option>
+                <option value="5">ชั้นปีที่ 5</option>
+              </select>
+            </div>
+            <div class="min-w-0">
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>🎖️</span> หมวด
+              </label>
+              <select id="filter-platoon" class="w-full min-w-0 rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition disabled:bg-slate-50 disabled:text-slate-500">
+                <option value="">ทั้งหมดทุกหมวด</option>
+                <optgroup label="🛡️ หมวดปกติ (ชาย)">
+                  <option value="1">หมวด 1 (ชาย)</option>
+                  <option value="2">หมวด 2 (ชาย)</option>
+                  <option value="3">หมวด 3 (ชาย)</option>
+                  <option value="4">หมวด 4 (ชาย)</option>
+                  <option value="5">หมวด 5 (ชาย)</option>
+                </optgroup>
+                <optgroup label="🎀 หมวดพิเศษ (หญิง)">
+                  <option value="พิเศษ 1">หมวดพิเศษ 1 (หญิง)</option>
+                  <option value="พิเศษ 2">หมวดพิเศษ 2 (หญิง)</option>
+                  <option value="พิเศษ 3">หมวดพิเศษ 3 (หญิง)</option>
+                  <option value="พิเศษ 4">หมวดพิเศษ 4 (หญิง)</option>
+                  <option value="พิเศษ 5">หมวดพิเศษ 5 (หญิง)</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="min-w-0">
+              <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
+                <span>🏫</span> สถานศึกษา
+              </label>
+              <select id="filter-school" class="w-full min-w-0 rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition">
+                <option value="">ทั้งหมด</option>
+              </select>
+            </div>
+            <div class="min-w-0">
+              <button class="w-full h-[42px] rounded-xl bg-forest-600 hover:bg-forest-700 py-2.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer" onclick="generateReport()">
+                <span>⚡</span> สร้างรายงาน
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="mb-6 grid gap-3 grid-cols-2 xl:grid-cols-4 hidden print:!grid" id="report-stats">
+          <div class="card p-3.5 sm:p-5 flex items-center gap-3 border border-emerald-100 bg-emerald-50/30 min-w-0">
+            <div class="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-emerald-100 text-lg sm:text-xl text-emerald-600">✓</div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xl sm:text-2xl font-black tracking-tight text-emerald-800 truncate" id="r-present">0</p>
+              <p class="text-[0.65rem] sm:text-[0.7rem] font-bold text-emerald-600 uppercase tracking-wide truncate">มาเรียน</p>
+            </div>
+          </div>
+          <div class="card p-3.5 sm:p-5 flex items-center gap-3 border border-rose-100 bg-rose-50/30 min-w-0">
+            <div class="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-rose-100 text-lg sm:text-xl text-rose-600">✗</div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xl sm:text-2xl font-black tracking-tight text-rose-800 truncate" id="r-absent">0</p>
+              <p class="text-[0.65rem] sm:text-[0.7rem] font-bold text-rose-600 uppercase tracking-wide truncate">ขาดเรียน</p>
+            </div>
+          </div>
+          <div class="card p-3.5 sm:p-5 flex items-center gap-3 border border-amber-100 bg-amber-50/30 min-w-0">
+            <div class="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-amber-100 text-lg sm:text-xl text-amber-600">⏰</div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xl sm:text-2xl font-black tracking-tight text-amber-800 truncate" id="r-late">0</p>
+              <p class="text-[0.65rem] sm:text-[0.7rem] font-bold text-amber-600 uppercase tracking-wide truncate">มาสาย</p>
+            </div>
+          </div>
+          <div class="card p-3.5 sm:p-5 flex items-center gap-3 border border-sky-100 bg-sky-50/30 min-w-0">
+            <div class="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-sky-100 text-lg sm:text-xl text-sky-600">📋</div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xl sm:text-2xl font-black tracking-tight text-sky-800 truncate" id="r-leave">0</p>
+              <p class="text-[0.65rem] sm:text-[0.7rem] font-bold text-sky-600 uppercase tracking-wide truncate">ลา</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="report-table-wrap" class="space-y-6"></div>
+      </div>
+
+      <!-- ─── SCHOOLS TAB ─── -->
+      <div id="tab-schools" class="hidden">
+        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end justify-between border-b border-emerald-950/5 pb-5">
+          <div>
+            <h2 class="text-2xl font-extrabold tracking-tight text-forest-900">รายชื่อสถานศึกษา</h2>
+            <p class="mt-2 text-sm text-slate-500">จัดการข้อมูลและตั้งค่าอีเมลสำหรับส่งรายงาน</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="sendTodayReport()" class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs font-bold text-sky-700 transition hover:bg-sky-100 flex items-center gap-2"><span>📧</span> ส่งรายงานวันนี้ให้ทุก รร.</button>
+            <button onclick="openSchoolModal()" class="rounded-xl bg-forest-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700">+ เพิ่มสถานศึกษา</button>
+          </div>
+        </div>
+
+        <div id="schools-list">
+          <div class="flex items-center justify-center p-12 text-slate-400"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>
+        </div>
+      </div>
+
+      <!-- ─── LEAVE TAB ─── -->
+      <div id="tab-leave" class="hidden">
+        <div class="mb-6 border-b border-emerald-950/5 pb-5">
+          <h2 class="text-2xl font-extrabold tracking-tight text-forest-900">สรุปใบลา</h2>
+        </div>
+
+        <div class="mb-6 grid gap-3 grid-cols-2 xl:grid-cols-4" id="leave-stats">
+          <div class="card p-3.5 sm:p-5 flex items-center gap-3 min-w-0">
+            <div class="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-amber-50 text-lg sm:text-xl text-amber-500">⏳</div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xl sm:text-2xl font-black tracking-tight text-forest-900 truncate" id="ls-pending">--</p>
+              <p class="text-[0.65rem] sm:text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide truncate">รอดำเนินการ</p>
+            </div>
+          </div>
+          <div class="card p-3.5 sm:p-5 flex items-center gap-3 min-w-0">
+            <div class="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-emerald-50 text-lg sm:text-xl text-emerald-500">✅</div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xl sm:text-2xl font-black tracking-tight text-forest-900 truncate" id="ls-approved">--</p>
+              <p class="text-[0.65rem] sm:text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide truncate">อนุมัติ</p>
+            </div>
+          </div>
+          <div class="card p-3.5 sm:p-5 flex items-center gap-3 min-w-0">
+            <div class="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-rose-50 text-lg sm:text-xl text-rose-500">❌</div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xl sm:text-2xl font-black tracking-tight text-forest-900 truncate" id="ls-rejected">--</p>
+              <p class="text-[0.65rem] sm:text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide truncate">ปฏิเสธ</p>
+            </div>
+          </div>
+          <div class="card p-3.5 sm:p-5 flex items-center gap-3 min-w-0">
+            <div class="grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-sky-50 text-lg sm:text-xl text-sky-500">📋</div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xl sm:text-2xl font-black tracking-tight text-forest-900 truncate" id="ls-total">--</p>
+              <p class="text-[0.65rem] sm:text-[0.7rem] font-bold text-slate-500 uppercase tracking-wide truncate">ทั้งหมด</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card overflow-hidden" id="leave-table-wrap">
+          <div id="leave-table" class="overflow-x-auto">
+            <div class="flex items-center justify-center p-12 text-slate-400"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-3 rounded-2xl bg-white/95 backdrop-blur-xl px-5 py-3 text-sm font-bold text-slate-800 shadow-2xl border border-emerald-500/30 cursor-pointer print:hidden" onclick="this.classList.remove('show')">
+    <span class="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 text-xs font-black text-emerald-700 shrink-0">✓</span>
+    <span id="toastText" class="flex-1 font-bold text-slate-800">ดำเนินการสำเร็จ</span>
+    <span class="text-slate-400 hover:text-slate-700 ml-2 font-black text-xs">✕</span>
+  </div>
+
+  <!-- School Modal -->
+  <div class="fixed inset-0 z-50 hidden place-items-center bg-slate-950/45 p-4 backdrop-blur-sm print:hidden" id="school-modal">
+    <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col">
+      <div class="flex items-center justify-between border-b border-emerald-950/5 px-5 py-4 shrink-0 bg-slate-50">
+        <h3 class="font-bold text-forest-900" id="school-modal-title">เพิ่มสถานศึกษา</h3>
+        <button class="icon-btn !h-8 !w-8 bg-white shadow-sm border border-slate-200" onclick="closeModal('school-modal')">✕</button>
+      </div>
+      <div class="p-5 overflow-y-auto">
+        <input type="hidden" id="school-id">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-600 uppercase tracking-wide">ชื่อสถานศึกษา <span class="text-rose-500">*</span></label>
+            <input id="school-name" placeholder="เช่น โรงเรียนสมเด็จพิทยาคม" required class="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-600 uppercase tracking-wide">ชื่ออาจารย์ผู้ดูแล <span class="text-rose-500">*</span></label>
+            <input id="school-teacher" placeholder="เช่น ครูกาญจนา มั่นกิจ" required class="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-600 uppercase tracking-wide">อีเมลอาจารย์ <span class="text-rose-500">*</span></label>
+            <input type="email" id="school-email" placeholder="teacher@school.ac.th" required class="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-600 uppercase tracking-wide">โทรศัพท์ (ไม่บังคับ)</label>
+            <input type="tel" id="school-phone" placeholder="0xx-xxx-xxxx" class="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-[0.65rem] font-bold text-slate-600 uppercase tracking-wide">จังหวัด (ไม่บังคับ)</label>
+            <input id="school-province" placeholder="เช่น กรุงเทพมหานคร" class="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-bold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition">
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-emerald-950/5 px-5 py-4 shrink-0 bg-slate-50 flex gap-3 justify-end">
+        <button class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-50 w-full sm:w-auto" onclick="closeModal('school-modal')">ยกเลิก</button>
+        <button class="rounded-xl bg-forest-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-forest-700 shadow-lg shadow-emerald-600/20 w-full sm:w-auto" id="save-school-btn" onclick="saveSchoolData()">💾 บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js?v=2"></script>
+<script src="js/datepicker.js"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/router.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/attendance.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/leave.js"></script>
+<script src="js/gas-webhook.js"></script>
+<script>
+var currentUser = null;
+var reportData   = [];
+var activeTab    = 'attendance';
+
+// Set default date range (last 7 days)
+var endD   = today();
+var startD = dateToStr(new Date(Date.now() - 6*86400000));
+document.getElementById('filter-start').value = startD;
+document.getElementById('filter-end').value   = endD;
+
+function setDatePreset(preset, btn) {
+  var now = new Date();
+  var start, end;
+  
+  if (preset === 'today') {
+    start = now;
+    end = now;
+  } else if (preset === '7days') {
+    start = new Date(now.getTime() - 6 * 86400000);
+    end = now;
+  } else if (preset === '30days') {
+    start = new Date(now.getTime() - 29 * 86400000);
+    end = now;
+  } else if (preset === 'month') {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = now;
+  }
+  
+  if (start && end) {
+    document.getElementById('filter-start').value = dateToStr(start);
+    document.getElementById('filter-end').value   = dateToStr(end);
+  }
+
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    b.classList.remove('bg-emerald-600', 'text-white', 'shadow-xs');
+    b.classList.add('bg-slate-100', 'text-slate-600', 'hover:bg-emerald-50', 'hover:text-emerald-700');
+  });
+  if (btn) {
+    btn.classList.remove('bg-slate-100', 'text-slate-600', 'hover:bg-emerald-50', 'hover:text-emerald-700');
+    btn.classList.add('bg-emerald-600', 'text-white', 'shadow-xs');
+  }
+
+  generateReport();
+}
+
+auth.onAuthStateChanged(async user => {
+  if (!user) { window.location.href='index.html'; return; }
+  var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+  if (!snap.exists || snap.data().role < ROLES.PLATOON) {
+    window.location.href='dashboard.html'; return;
+  }
+  currentUser = { uid: user.uid, ...snap.data() };
+  
+  renderSidebar(currentUser);
+  renderTopbarUser(currentUser);
+  initSidebar();
+  
+  document.getElementById('sidebar-name').textContent = currentUser.name || currentUser.studentId;
+  document.getElementById('sidebar-role').textContent = ROLE_NAMES[currentUser.role];
+  document.getElementById('sidebar-user-card').classList.remove('hidden');
+
+  // Pre-fill filters for lower roles
+  if (currentUser.role === ROLES.PLATOON) {
+    document.getElementById('filter-platoon').value  = currentUser.platoon || '';
+    document.getElementById('filter-platoon').readOnly = true;
+    document.getElementById('filter-platoon').classList.add('bg-slate-50', 'text-slate-500');
+    document.getElementById('filter-company').value  = currentUser.company || '';
+    document.getElementById('filter-company').disabled = true;
+  } else if (currentUser.role === ROLES.COMPANY) {
+    document.getElementById('filter-company').value  = currentUser.company || '';
+    document.getElementById('filter-company').disabled = true;
+  }
+
+  loadSchoolDropdown();
+  generateReport();
+  loadLeaveStats();
+  loadSchools();
+});
+
+function switchTab(tab, btn) {
+  activeTab = tab;
+  ['attendance','schools','leave'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('hidden', t !== tab);
+  });
+  document.querySelectorAll('.report-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function loadSchoolDropdown() {
+  var sel = document.getElementById('filter-school');
+  var schools = await getSchools();
+  schools.forEach(s => {
+    var opt = document.createElement('option');
+    opt.value = s.name; opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+}
+
+function leaveBadge(status) {
+  if(status === 'pending') return '<span class="rounded-full bg-amber-50 px-2 py-0.5 text-[0.65rem] font-bold text-amber-600 border border-amber-100">รอพิจารณา</span>';
+  if(status === 'approved') return '<span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-600 border border-emerald-100">อนุมัติแล้ว</span>';
+  return '<span class="rounded-full bg-rose-50 px-2 py-0.5 text-[0.65rem] font-bold text-rose-600 border border-rose-100">ปฏิเสธแล้ว</span>';
+}
+
+function statusBadgeHtml(status) {
+  const map = {
+    'present': '<span class="rounded-md bg-emerald-50 px-2 py-1 text-[0.65rem] font-bold text-emerald-600 border border-emerald-100">มาเรียน</span>',
+    'absent':  '<span class="rounded-md bg-rose-50 px-2 py-1 text-[0.65rem] font-bold text-rose-600 border border-rose-100">ขาดเรียน</span>',
+    'late':    '<span class="rounded-md bg-amber-50 px-2 py-1 text-[0.65rem] font-bold text-amber-600 border border-amber-100">มาสาย</span>',
+    'leave':   '<span class="rounded-md bg-sky-50 px-2 py-1 text-[0.65rem] font-bold text-sky-600 border border-sky-100">ลา</span>',
+  };
+  return map[status] || '<span class="rounded-md bg-slate-50 px-2 py-1 text-[0.65rem] font-bold text-slate-500 border border-slate-200">-</span>';
+}
+
+async function generateReport() {
+  var wrap = document.getElementById('report-table-wrap');
+  wrap.innerHTML = `<div class="flex items-center justify-center p-12 text-slate-400"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>`;
+  document.getElementById('report-stats').classList.add('hidden');
+
+  try {
+    var filters = {
+      company: document.getElementById('filter-company').value.trim() || undefined,
+      platoon: document.getElementById('filter-platoon').value.trim() || undefined,
+      school:  document.getElementById('filter-school').value || undefined,
+    };
+    Object.keys(filters).forEach(k => filters[k] === undefined && delete filters[k]);
+
+    reportData = await generateSummary(
+      document.getElementById('filter-start').value,
+      document.getElementById('filter-end').value,
+      filters
+    );
+
+    if (!reportData.length) {
+      wrap.innerHTML = `<div class="card p-12 text-center text-slate-400">
+        <div class="text-4xl mb-3 opacity-50">📭</div>
+        <p class="font-bold text-forest-900 text-lg">ไม่มีข้อมูลในช่วงเวลาที่เลือก</p>
+      </div>`;
+      return;
+    }
+
+    // Total stats
+    var totalPresent=0, totalAbsent=0, totalLate=0, totalLeave=0;
+    reportData.forEach(d => {
+      totalPresent += d.stats.present;
+      totalAbsent  += d.stats.absent;
+      totalLate    += d.stats.late;
+      totalLeave   += d.stats.leave;
+    });
+
+    document.getElementById('r-present').textContent = totalPresent;
+    document.getElementById('r-absent').textContent  = totalAbsent;
+    document.getElementById('r-late').textContent    = totalLate;
+    document.getElementById('r-leave').textContent   = totalLeave;
+    document.getElementById('report-stats').classList.remove('hidden');
+
+    // Table
+    wrap.innerHTML = reportData.map(day => `
+      <div class="card overflow-hidden">
+        <div class="bg-slate-50 border-b border-emerald-950/5 px-5 py-3.5 flex flex-wrap items-center justify-between gap-4">
+          <h3 class="font-bold text-forest-900 flex items-center gap-2">
+            <span class="grid h-7 w-7 place-items-center rounded-lg bg-white border border-slate-200 text-xs">📅</span>
+            ${formatDateThai(day.date)} (${getThaiDayName(day.date)})
+          </h3>
+          <div class="flex gap-1.5 flex-wrap">
+            ${statusBadge_count(day.stats.present,'present')}
+            ${statusBadge_count(day.stats.absent,'absent')}
+            ${statusBadge_count(day.stats.late,'late')}
+            ${statusBadge_count(day.stats.leave,'leave')}
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left min-w-[600px]">
+            <thead>
+              <tr class="border-b border-emerald-950/5 bg-white">
+                <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">รหัส / ชื่อ</th>
+                <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">หมวด</th>
+                <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">สถานศึกษา</th>
+                <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">สถานะ</th>
+                <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider text-right">เวลาเข้า</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-emerald-950/5 bg-white">
+              ${day.records.map(r => `
+              <tr class="hover:bg-slate-50/50 transition">
+                <td class="px-4 py-2.5">
+                  <p class="text-sm font-bold text-forest-900">${escapeHtml(r.studentId||'')}</p>
+                  <p class="text-xs text-slate-500">${escapeHtml(r.name||'')}</p>
+                </td>
+                <td class="px-4 py-2.5 text-sm text-slate-600">${escapeHtml(r.platoon||'-')}</td>
+                <td class="px-4 py-2.5 text-sm text-slate-600">${escapeHtml(r.school||'-')}</td>
+                <td class="px-4 py-2.5">${statusBadgeHtml(r.status)}</td>
+                <td class="px-4 py-2.5 text-right text-sm font-medium text-slate-500">${r.checkInTime ? formatTime(r.checkInTime) : '-'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    wrap.innerHTML = `<div class="p-4 text-red-500 bg-red-50 rounded-xl text-sm font-bold">เกิดข้อผิดพลาด: ${e.message}</div>`;
+  }
+}
+
+function statusBadge_count(n, type) {
+  if (n === 0) return '';
+  var labels = {present:'มา',absent:'ขาด',late:'สาย',leave:'ลา'};
+  var cls = {
+    present: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    absent:  'bg-rose-50 text-rose-600 border-rose-100',
+    late:    'bg-amber-50 text-amber-600 border-amber-100',
+    leave:   'bg-sky-50 text-sky-600 border-sky-100'
+  };
+  return `<span class="rounded-md border px-2 py-0.5 text-[0.65rem] font-bold ${cls[type]}">${labels[type]} ${n}</span>`;
+}
+
+function exportReport() {
+  if (!reportData.length) { showToast('กรุณาสร้างรายงานก่อน', 'warning'); return; }
+  exportToCSV(reportData, `report_${today()}.csv`);
+  showToast('Export CSV สำเร็จ');
+}
+
+// ─── Schools ─────────────────────────────────────────────────
+async function loadSchools() {
+  var el = document.getElementById('schools-list');
+  try {
+    var schools = await getSchools();
+    if (!schools.length) {
+      el.innerHTML = `<div class="card p-12 text-center text-slate-400">
+        <div class="text-4xl mb-3 opacity-50">🏫</div>
+        <p class="font-bold text-forest-900 text-lg">ยังไม่มีสถานศึกษา</p>
+        <p class="text-sm">กด "+ เพิ่มสถานศึกษา" ด้านบนเพื่อเพิ่ม</p>
+      </div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        ${schools.map(s => `
+          <div class="card p-5 group transition hover:border-emerald-300 flex flex-col h-full">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <h4 class="font-bold text-forest-900 text-lg flex items-center gap-2"><span>🏫</span> ${escapeHtml(s.name)}</h4>
+                ${s.province ? `<p class="text-xs font-bold text-slate-400 uppercase tracking-wide mt-1">${escapeHtml(s.province)}</p>` : ''}
+              </div>
+              <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                <button onclick="editSchool('${s.id}')" class="grid h-8 w-8 place-items-center rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition" title="แก้ไข">✏️</button>
+                <button onclick="deleteSchoolConfirm('${s.id}','${escapeHtml(s.name)}')" class="grid h-8 w-8 place-items-center rounded-lg bg-rose-50 text-rose-400 hover:bg-rose-100 hover:text-rose-600 transition" title="ลบ">🗑</button>
+              </div>
+            </div>
+            <div class="space-y-2 text-sm mt-auto mb-5">
+              <div class="flex gap-2 items-center"><span class="w-16 text-slate-400 font-medium">อาจารย์:</span><span class="font-bold text-forest-900">${escapeHtml(s.teacherName||'-')}</span></div>
+              <div class="flex gap-2 items-center"><span class="w-16 text-slate-400 font-medium">อีเมล:</span><a href="mailto:${escapeHtml(s.teacherEmail||'')}" class="font-bold text-sky-600 hover:underline truncate">${escapeHtml(s.teacherEmail||'-')}</a></div>
+              ${s.phone ? `<div class="flex gap-2 items-center"><span class="w-16 text-slate-400 font-medium">โทร:</span><span class="font-bold text-forest-900">${escapeHtml(s.phone)}</span></div>` : ''}
+            </div>
+            <div class="border-t border-emerald-950/5 pt-4 mt-auto">
+              <button onclick="sendSchoolReport('${s.id}')" class="w-full rounded-xl border border-sky-200 bg-sky-50 py-2 text-xs font-bold text-sky-700 transition hover:bg-sky-100 flex justify-center items-center gap-1.5">
+                <span>📧</span> ส่งรายงานวันนี้
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch(e) {
+    el.innerHTML = `<div class="p-4 text-red-500 bg-red-50 rounded-xl text-sm font-bold">${e.message}</div>`;
+  }
+}
+
+function openModal(id) {
+  var el = document.getElementById(id);
+  el.classList.remove('hidden');
+  el.classList.add('grid');
+}
+function closeModal(id) {
+  var el = document.getElementById(id);
+  el.classList.add('hidden');
+  el.classList.remove('grid');
+}
+
+function openSchoolModal(school = null) {
+  document.getElementById('school-modal-title').textContent = school ? 'แก้ไขสถานศึกษา' : 'เพิ่มสถานศึกษา';
+  document.getElementById('school-id').value       = school?.id || '';
+  document.getElementById('school-name').value     = school?.name || '';
+  document.getElementById('school-teacher').value  = school?.teacherName || '';
+  document.getElementById('school-email').value    = school?.teacherEmail || '';
+  document.getElementById('school-phone').value    = school?.phone || '';
+  document.getElementById('school-province').value = school?.province || '';
+  openModal('school-modal');
+}
+
+var _schoolsCache = [];
+async function editSchool(id) {
+  if (!_schoolsCache.length) _schoolsCache = await getSchools();
+  var s = _schoolsCache.find(x => x.id === id);
+  if (s) openSchoolModal(s);
+}
+
+async function saveSchoolData() {
+  var btn = document.getElementById('save-school-btn');
+  var name    = document.getElementById('school-name').value.trim();
+  var teacher = document.getElementById('school-teacher').value.trim();
+  var email   = document.getElementById('school-email').value.trim();
+  if (!name || !teacher || !email) { showToast('กรุณากรอกข้อมูลให้ครบ', 'error'); return; }
+  showLoading(btn, 'กำลังบันทึก...');
+  try {
+    await saveSchool({
+      id:          document.getElementById('school-id').value || null,
+      name, teacherName: teacher, teacherEmail: email,
+      phone:    document.getElementById('school-phone').value.trim(),
+      province: document.getElementById('school-province').value.trim(),
+    });
+    _schoolsCache = [];
+    closeModal('school-modal');
+    showToast('บันทึกสำเร็จ');
+    loadSchools(); loadSchoolDropdown();
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  } finally {
+    hideLoading(btn);
+  }
+}
+
+async function deleteSchoolConfirm(id, name) {
+  var confirmed = await showConfirmPopup(
+    'ยืนยันการลบสถานศึกษา?',
+    `คุณต้องการลบ "${name}" ออกจากระบบใช่หรือไม่?`,
+    'ลบข้อมูล',
+    'ยกเลิก',
+    'warning'
+  );
+  if (!confirmed) return;
+  try {
+    await deleteSchool(id);
+    _schoolsCache = [];
+    showToast('ลบสถานศึกษาสำเร็จ', 'success');
+    loadSchools();
+  } catch(e) {
+    showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+  }
+}
+
+async function sendSchoolReport(schoolId) {
+  var schools = await getSchools();
+  var school  = schools.find(s => s.id === schoolId);
+  if (!school) return;
+  showToast(`กำลังส่งรายงานไปยัง ${school.teacherEmail}...`);
+  var records = await getSchoolRecordsForDate(today(), school.name);
+  if (!records.length) { showToast('ไม่มีข้อมูลสำหรับโรงเรียนนี้วันนี้', 'error'); return; }
+  var summaryData = {
+    students: records.map(r => ({ studentId: r.studentId, name: r.name, status: statusTextTh(r.status) })),
+    stats: computeStats(records),
+  };
+  await sendDailySummaryToSchool(school, summaryData, today());
+  showToast('ส่งรายงานสำเร็จ!');
+}
+
+async function sendTodayReport() {
+  showToast('กำลังส่งรายงานไปทุกสถานศึกษา...');
+  var results = await sendReportToSchools(today());
+  showToast(`ส่งสำเร็จ ${results.length} สถานศึกษา`);
+}
+
+// ─── Leave Stats Tab ──────────────────────────────────────────
+async function loadLeaveStats() {
+  var [pending, approved, rejected, all] = await Promise.all([
+    db.collection(COLLECTIONS.LEAVE).where('status','==','pending').get(),
+    db.collection(COLLECTIONS.LEAVE).where('status','==','approved').get(),
+    db.collection(COLLECTIONS.LEAVE).where('status','==','rejected').get(),
+    db.collection(COLLECTIONS.LEAVE).limit(50).get(),
+  ]);
+
+  document.getElementById('ls-pending').textContent  = pending.size;
+  document.getElementById('ls-approved').textContent = approved.size;
+  document.getElementById('ls-rejected').textContent = rejected.size;
+  document.getElementById('ls-total').textContent    = pending.size + approved.size + rejected.size;
+
+  var leaves = [];
+  all.forEach(d => leaves.push({ id: d.id, ...d.data() }));
+  leaves.sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
+
+  var el = document.getElementById('leave-table');
+  if (!leaves.length) { 
+    el.innerHTML = `<div class="p-12 text-center text-slate-400">
+      <div class="text-4xl mb-3 opacity-50">📭</div>
+      <p class="font-bold text-forest-900 text-lg">ไม่มีใบลา</p>
+    </div>`; 
+    return; 
+  }
+  
+  el.innerHTML = `
+    <table class="w-full text-left border-collapse min-w-[700px]">
+      <thead>
+        <tr class="bg-slate-50 border-b border-emerald-950/5">
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">ชื่อ</th>
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">ประเภท</th>
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">ช่วงวันที่</th>
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">โรงเรียน / หมวด</th>
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">สถานะ</th>
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider text-right">ส่งเมื่อ</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-emerald-950/5">
+        ${leaves.map(l=>`
+        <tr class="hover:bg-slate-50/50 transition">
+          <td class="px-4 py-3 font-bold text-forest-900 text-sm">${escapeHtml(l.studentName||'')}</td>
+          <td class="px-4 py-3 text-sm font-medium ${l.type === 'sick' ? 'text-rose-600' : 'text-sky-600'}">${leaveTypeName(l.type)}</td>
+          <td class="px-4 py-3">
+            <span class="text-sm font-medium text-slate-600">${formatDateShort(l.startDate)} – ${formatDateShort(l.endDate)}</span>
+            <span class="ml-2 inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[0.65rem] font-bold text-slate-500">${l.days} วัน</span>
+          </td>
+          <td class="px-4 py-3 text-sm text-slate-500">
+            ${escapeHtml(l.school||'-')} <br>
+            <span class="text-xs font-bold text-slate-400">หมวด ${escapeHtml(l.platoon||'-')}</span>
+          </td>
+          <td class="px-4 py-3">${leaveBadge(l.status)}</td>
+          <td class="px-4 py-3 text-right text-xs font-medium text-slate-400">${l.createdAt ? formatDateTime(l.createdAt) : '--'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+</script>
+</body>
+</html>

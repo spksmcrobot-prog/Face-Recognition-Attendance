@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ขอลากิจ / ลาป่วย | ระบบเช็คชื่อ นศท.</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<style>
+  .tab-btn.active { border-color: #159a61 !important; background-color: #e5f1ea !important; color: #17382a !important; font-weight: 700 !important; box-shadow: 0 2px 8px rgba(21,154,97,0.1) !important; }
+</style>
+</head>
+<body class="bg-[#f6faf8] text-[#17382a] font-sans">
+  <div id="sidebackdrop" class="fixed inset-0 z-30 hidden bg-slate-900/25 backdrop-blur-[1px]" onclick="toggleSidebar()"></div>
+  
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-[17.25rem] flex-col border-r border-emerald-950/5 bg-white px-4 py-5 transition-transform duration-250 lg:translate-x-0 -translate-x-full">
+    <div class="mb-8 flex items-center gap-3 px-2">
+      <img src="https://mstc23.rta.mi.th/amc23/img/23png.png" alt="Logo" class="h-10 w-10 object-contain rounded-xl drop-shadow-md">
+      <div>
+        <p class="text-[1.05rem] font-bold tracking-tight text-forest-900">รด. Check</p>
+        <p class="text-[.68rem] font-medium text-slate-400">ศูนย์เช็คเวลาเรียน</p>
+      </div>
+    </div>
+    <nav id="sidebar-nav" class="space-y-1"></nav>
+    <div class="mt-auto rounded-2xl bg-forest-50 p-3.5 mb-3 hidden" id="sidebar-user-card">
+       <div class="flex items-center gap-2 text-[.72rem] font-bold text-forest-700">
+         <div class="grid h-7 w-7 place-items-center rounded-lg bg-forest-100 text-[.62rem] font-black text-forest-700" id="sidebar-avatar">?</div>
+         <div>
+            <div id="sidebar-name" class="truncate w-[140px]">--</div>
+            <div id="sidebar-role" class="text-[0.65rem] text-forest-600/80">--</div>
+         </div>
+       </div>
+    </div>
+    <button class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:text-red-500" onclick="logout()">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 00-2-2h-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> ออกจากระบบ
+    </button>
+  </aside>
+
+  <main class="min-h-screen lg:ml-[17.25rem]">
+    <header class="sticky top-0 z-20 flex h-[4.7rem] items-center justify-between border-b border-emerald-950/5 bg-[#f6faf8]/90 px-4 backdrop-blur-md sm:px-7 lg:px-9">
+      <div class="flex items-center gap-3">
+        <button class="icon-btn lg:hidden" id="menu-btn" aria-label="เปิดเมนู">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div>
+          <p class="text-base font-bold text-forest-900 sm:text-lg">ขอลากิจ / ลาป่วย</p>
+          <p id="date-top" class="hidden text-xs text-slate-400 sm:block">--</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <a href="dashboard.html" class="hidden sm:flex text-xs font-bold text-forest-600 hover:underline mr-2">← กลับหน้าหลัก</a>
+        <div id="topbar-user" class="relative"></div>
+      </div>
+    </header>
+    
+    <div class="mx-auto max-w-[1200px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8" id="page-body">
+      
+      <div class="page-header mb-6">
+        <p class="mb-1 text-sm font-bold text-forest-600">แบบฟอร์ม</p>
+        <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">ส่งใบลา</h1>
+        <p class="mt-2 text-sm text-slate-500">ใบลาจะถูกส่งไปยังหัวหน้าชุดครูฝึกเพื่อพิจารณาอนุมัติ</p>
+      </div>
+
+      <!-- Success State -->
+      <div id="success-state" class="hidden flex flex-col items-center justify-center min-h-[50vh]">
+        <div style="font-size:5rem;margin-bottom:20px;animation:enter .5s ease">✅</div>
+        <h2 class="text-2xl font-extrabold text-emerald-600">ส่งคำร้องสำเร็จ!</h2>
+        <p class="text-sm text-slate-500 mt-2 font-medium">ใบลาของคุณถูกส่งไปให้ผู้บังคับบัญชาพิจารณาแล้ว</p>
+        <div class="mt-8 flex gap-3">
+          <button class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-50" onclick="resetForm()">ส่งใบลาอีกครั้ง</button>
+          <a href="dashboard.html" class="rounded-xl bg-forest-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-forest-700">กลับหน้าหลัก</a>
+        </div>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+        <!-- Form -->
+        <div>
+          <div class="card p-5 sm:p-7">
+            <form id="leave-form">
+              <!-- Leave Type -->
+              <div class="mb-6">
+                <label class="mb-3 block text-xs font-bold text-slate-600 uppercase tracking-wide">ประเภทการลา</label>
+                <div class="flex gap-3" id="type-tabs">
+                  <button type="button" class="tab-btn active flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-500 transition hover:border-emerald-300" data-type="personal" onclick="setLeaveType('personal',this)">📋 ลากิจ</button>
+                  <button type="button" class="tab-btn flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-500 transition hover:border-emerald-300" data-type="sick" onclick="setLeaveType('sick',this)">🏥 ลาป่วย</button>
+                </div>
+                <input type="hidden" id="leave-type" value="personal">
+              </div>
+
+              <!-- Date Range -->
+              <div class="leave-date-grid">
+                <div>
+                  <label class="mb-1.5 block text-xs font-bold text-slate-600">วันที่เริ่มลา</label>
+                  <input type="date" id="start-date" required onchange="updateDays()"
+                    class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 outline-none transition"
+                    style="-webkit-appearance:none;appearance:none;">
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-xs font-bold text-slate-600">วันที่กลับ</label>
+                  <input type="date" id="end-date" required onchange="updateDays()"
+                    class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 outline-none transition"
+                    style="-webkit-appearance:none;appearance:none;">
+                </div>
+              </div>
+
+              <!-- Days count -->
+              <div class="mb-6 hidden flex items-center gap-3 rounded-xl bg-emerald-50 px-4 py-3" id="days-info">
+                <span class="text-xl">📅</span>
+                <span class="text-sm font-bold text-emerald-800" id="days-text">0 วัน</span>
+              </div>
+
+              <!-- Reason -->
+              <div class="mb-6">
+                <label class="mb-1.5 block text-xs font-bold text-slate-600">เหตุผลการลา</label>
+                <textarea id="reason" rows="3" placeholder="ระบุเหตุผลการลาให้ชัดเจน..." required class="w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition"></textarea>
+              </div>
+
+              <!-- Evidence Upload -->
+              <div class="mb-8">
+                <label class="mb-1.5 block text-xs font-bold text-slate-600">หลักฐานประกอบ (ไม่บังคับ)</label>
+                
+                <div id="upload-zone" class="relative overflow-hidden rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 transition hover:bg-slate-100 p-6 flex flex-col items-center justify-center text-center cursor-pointer" onclick="document.getElementById('evidence-file').click()">
+                  <input type="file" accept="image/*,application/pdf" id="evidence-file" class="hidden" onchange="handleFileSelect(this)">
+                  <div id="upload-placeholder">
+                    <div class="text-3xl mb-2">📎</div>
+                    <p class="text-sm font-bold text-forest-900">แตะเพื่อเลือกไฟล์</p>
+                    <p class="mt-1 text-[0.65rem] text-slate-400">รองรับ JPG, PNG, PDF ขนาดไม่เกิน 5MB</p>
+                  </div>
+                  
+                  <div id="file-preview" class="hidden flex items-center gap-3 w-full text-left" onclick="event.stopPropagation()">
+                    <img id="preview-img" src="" alt="preview" class="h-12 w-12 rounded-lg object-cover bg-white border border-slate-200">
+                    <div class="flex-1 min-w-0">
+                      <p class="truncate text-sm font-bold text-forest-900" id="file-name">--</p>
+                      <p class="text-xs text-slate-500" id="file-size">--</p>
+                    </div>
+                    <button type="button" onclick="clearFile()" class="grid h-8 w-8 place-items-center rounded-full bg-white text-rose-500 shadow-sm transition hover:bg-rose-50">✕</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submit -->
+              <div class="flex gap-3">
+                <a href="dashboard.html" class="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-center text-sm font-bold text-slate-500 transition hover:bg-slate-50">ยกเลิก</a>
+                <button type="submit" class="flex-1 rounded-xl bg-forest-600 py-3 text-center text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700 flex items-center justify-center gap-2" id="submit-btn">
+                  <span>📤</span> ส่งคำร้องขอลา
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Sidebar info -->
+        <div class="flex flex-col gap-5">
+          <!-- Student info -->
+          <div class="card p-5">
+            <h4 class="font-bold text-forest-900 mb-4">📋 ข้อมูลผู้ลา</h4>
+            <div class="flex items-center gap-3 border-b border-emerald-950/5 pb-4">
+              <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-forest-100 text-sm font-black text-forest-700 overflow-hidden" id="lr-avatar">?</div>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-bold text-forest-900" id="lr-name">--</p>
+                <p class="text-[0.65rem] text-slate-500 font-medium" id="lr-id">--</p>
+              </div>
+            </div>
+            <div class="space-y-3 pt-4">
+              <div class="flex justify-between border-b border-slate-50 pb-2"><span class="text-xs text-slate-500">หมวด</span><span class="text-sm font-bold text-forest-900" id="lr-platoon">-</span></div>
+              <div class="flex justify-between border-b border-slate-50 pb-2"><span class="text-xs text-slate-500">ชั้นปี</span><span class="text-sm font-bold text-forest-900" id="lr-company">-</span></div>
+              <div class="flex justify-between pb-1"><span class="text-xs text-slate-500">โรงเรียน</span><span class="text-sm font-bold text-forest-900 text-right max-w-[120px] truncate" id="lr-school" title="">-</span></div>
+            </div>
+          </div>
+
+          <!-- Pending Leaves -->
+          <div class="card p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="font-bold text-forest-900">⏳ ใบลาที่รอพิจารณา</h4>
+            </div>
+            <div id="pending-my-leaves" class="space-y-3">
+              <div class="text-center py-4"><svg class="h-6 w-6 animate-spin mx-auto text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+<div id="toast" class="toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-xl bg-forest-900 px-4 py-3 text-sm font-bold text-white shadow-xl">
+  <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-400 text-[.65rem] text-forest-900">✓</span>
+  <span id="toastText">ดำเนินการสำเร็จ</span>
+</div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js?v=2"></script>
+<script src="js/datepicker.js"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/router.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/attendance.js"></script>
+<script>
+var currentUser = null;
+var selectedFile = null;
+
+document.getElementById('date-top').textContent =
+  new Date().toLocaleDateString('th-TH',{weekday:'short',month:'short',day:'numeric'});
+
+var todayStr = today();
+document.getElementById('start-date').value = todayStr;
+document.getElementById('end-date').value   = todayStr;
+document.getElementById('start-date').min   = todayStr;
+document.getElementById('end-date').min     = todayStr;
+
+auth.onAuthStateChanged(async user => {
+  if (!user) { window.location.href='index.html'; return; }
+  var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+  if (!snap.exists) { auth.signOut(); window.location.href='index.html'; return; }
+  currentUser = { uid: user.uid, ...snap.data() };
+  
+  renderSidebar(currentUser);
+  renderTopbarUser(currentUser);
+  initSidebar();
+  
+  document.getElementById('sidebar-name').textContent = currentUser.name || currentUser.studentId;
+  document.getElementById('sidebar-role').textContent = ROLE_NAMES[currentUser.role];
+  document.getElementById('sidebar-user-card').classList.remove('hidden');
+
+  populateUserInfo(currentUser);
+  loadMyPendingLeaves(currentUser.uid);
+});
+
+function populateUserInfo(user) {
+  document.getElementById('lr-name').textContent    = user.name || '';
+  document.getElementById('lr-id').textContent      = user.studentId || '';
+  document.getElementById('lr-platoon').textContent = user.platoon || '-';
+  document.getElementById('lr-company').textContent = user.company ? 'ปี ' + user.company : '-';
+  document.getElementById('lr-school').textContent  = user.school || '-';
+  document.getElementById('lr-school').title        = user.school || '';
+  var av = document.getElementById('lr-avatar');
+  if (user.profilePhotoUrl) av.innerHTML = `<img src="${user.profilePhotoUrl}" class="w-full h-full object-cover">`;
+  else av.textContent = initials(user.name);
+}
+
+function setLeaveType(type, btn) {
+  document.getElementById('leave-type').value = type;
+  document.querySelectorAll('#type-tabs .tab-btn').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function updateDays() {
+  var s = document.getElementById('start-date').value;
+  var e = document.getElementById('end-date').value;
+  if (!s || !e) return;
+  if (e < s) { document.getElementById('end-date').value = s; return; }
+  var days = daysBetween(s, e);
+  var info = document.getElementById('days-info');
+  info.classList.remove('hidden');
+  info.classList.add('flex');
+  document.getElementById('days-text').textContent = `รวม ${days} วัน (${formatDateShort(s)} – ${formatDateShort(e)})`;
+}
+
+function handleFileSelect(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var allowed = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
+  if (!allowed.includes(file.type)) {
+    showToast('รองรับเฉพาะ JPG, PNG, PDF เท่านั้น', 'error');
+    input.value = '';
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('ไฟล์ใหญ่เกิน 5MB', 'error');
+    input.value = '';
+    return;
+  }
+  selectedFile = file;
+  document.getElementById('upload-placeholder').classList.add('hidden');
+  document.getElementById('file-preview').classList.remove('hidden');
+  document.getElementById('file-preview').classList.add('flex');
+  document.getElementById('file-name').textContent = file.name;
+  document.getElementById('file-size').textContent = (file.size/1024/1024).toFixed(2) + ' MB';
+  
+  if (file.type.startsWith('image/')) {
+    previewFile(file, document.getElementById('preview-img'));
+    document.getElementById('preview-img').classList.remove('hidden');
+  } else {
+    document.getElementById('preview-img').src = '';
+    document.getElementById('preview-img').classList.add('hidden');
+  }
+}
+
+function clearFile() {
+  selectedFile = null;
+  document.getElementById('evidence-file').value = '';
+  document.getElementById('upload-placeholder').classList.remove('hidden');
+  document.getElementById('file-preview').classList.add('hidden');
+  document.getElementById('file-preview').classList.remove('flex');
+}
+
+document.getElementById('leave-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  var btn = document.getElementById('submit-btn');
+  showLoading(btn, 'กำลังส่งใบลา...');
+
+  try {
+    await submitLeaveRequest(currentUser.uid, currentUser, {
+      type:      document.getElementById('leave-type').value,
+      startDate: document.getElementById('start-date').value,
+      endDate:   document.getElementById('end-date').value,
+      reason:    document.getElementById('reason').value.trim(),
+    }, selectedFile);
+
+    document.querySelector('.grid').classList.add('hidden');
+    document.querySelector('.page-header').classList.add('hidden');
+    document.getElementById('success-state').classList.remove('hidden');
+    document.getElementById('success-state').classList.add('flex');
+    showToast('ส่งใบลาสำเร็จ!');
+    loadMyPendingLeaves(currentUser.uid);
+  } catch(err) {
+    showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    hideLoading(btn);
+  }
+});
+
+function resetForm() {
+  document.querySelector('.grid').classList.remove('hidden');
+  document.querySelector('.page-header').classList.remove('hidden');
+  document.getElementById('success-state').classList.add('hidden');
+  document.getElementById('success-state').classList.remove('flex');
+  document.getElementById('leave-form').reset();
+  
+  var ts = today();
+  document.getElementById('start-date').value = ts;
+  document.getElementById('end-date').value   = ts;
+  clearFile();
+  document.getElementById('days-info').classList.add('hidden');
+  document.getElementById('days-info').classList.remove('flex');
+  
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = false;
+  btn.innerHTML = '<span>📤</span> ส่งคำร้องขอลา';
+}
+
+async function loadMyPendingLeaves(uid) {
+  var el = document.getElementById('pending-my-leaves');
+  try {
+    var leaves = await getLeaveRequests({ uid, status:'pending' });
+    if (!leaves.length) { 
+      el.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">ไม่มีใบลาที่รอดำเนินการ</p>`; 
+      return; 
+    }
+    el.innerHTML = leaves.map(l => {
+      const typeStr = l.type === 'sick' ? 'ลาป่วย' : 'ลากิจ';
+      const typeClass = l.type === 'sick' ? 'text-rose-600 bg-rose-50' : 'text-sky-600 bg-sky-50';
+      return `
+        <div class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="rounded-full px-2 py-0.5 text-[0.65rem] font-bold ${typeClass}">${typeStr}</span>
+              <span class="text-xs font-bold text-forest-900 truncate">${formatDateShort(l.startDate)}–${formatDateShort(l.endDate)}</span>
+            </div>
+            <p class="text-xs text-slate-500 truncate" title="${escapeHtml(l.reason)}">${escapeHtml(l.reason)}</p>
+          </div>
+          <span class="rounded-full bg-amber-50 px-2.5 py-1 text-[0.65rem] font-bold text-amber-700 whitespace-nowrap">รอพิจารณา</span>
+        </div>
+      `;
+    }).join('');
+  } catch(e) {}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบเช็คชื่อ นศท. | เช็คชื่อ & เช็คยอด</title>
+<meta name="description" content="หน้าหลักนักศึกษาวิชาทหาร - เช็คชื่อเข้า-ออก และเช็คยอดระหว่างวัน">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<style>
+  :root {
+    --forest-50: #f0faf4;
+    --forest-100: #dcf3e6;
+    --forest-600: #159a61;
+    --forest-700: #0e7e4f;
+    --forest-900: #0a4d2e;
+  }
+
+  * { font-family: 'IBM Plex Sans Thai', 'Sarabun', sans-serif; }
+  body { background: #f0f7f3; min-height: 100vh; }
+
+  /* ── Topbar ─────────────────────────── */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(21,154,97,0.1);
+    box-shadow: 0 1px 20px rgba(21,154,97,0.06);
+  }
+
+  /* ── Tab Bar ────────────────────────── */
+  .tab-bar {
+    display: flex;
+    background: white;
+    border-bottom: 2px solid #e8f5ee;
+    position: sticky;
+    top: 64px;
+    z-index: 40;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  }
+  .tab-btn {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px 12px;
+    font-size: 0.9rem; font-weight: 700;
+    color: #94a3b8;
+    cursor: pointer;
+    border: none; background: transparent;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .tab-btn.active {
+    color: #159a61;
+    border-bottom-color: #159a61;
+    background: linear-gradient(180deg, #f0faf4 0%, transparent 100%);
+  }
+  .tab-btn svg { width: 20px; height: 20px; }
+  .tab-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 9px;
+    font-size: 0.6rem; font-weight: 800;
+    background: #ef4444; color: white;
+  }
+
+  /* ── Tab Content ─────────────────────── */
+  .tab-panel { display: none; animation: fadeIn 0.25s ease; }
+  .tab-panel.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+
+  /* ── User Card ─────────────────────── */
+  .user-hero {
+    background: linear-gradient(135deg, #0e7e4f 0%, #159a61 50%, #1aad6b 100%);
+    padding: 20px 20px 24px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+  .user-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 60%);
+  }
+  .user-hero-avatar {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.25);
+    display: grid; place-items: center;
+    font-size: 1.3rem; font-weight: 900;
+    border: 2px solid rgba(255,255,255,0.4);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  /* ── Status Cards ─────────────────── */
+  .status-card {
+    background: white;
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    border: 1px solid #e8f5ee;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .status-card:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,0.09); }
+
+  /* ── Camera ─────────────────────────── */
+  .camera-wrap {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #0f172a;
+    aspect-ratio: 4/3;
+    max-height: 280px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .camera-wrap video, .camera-wrap canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .camera-wrap canvas { pointer-events: none; z-index: 10; }
+  .face-frame {
+    position: absolute; inset: 0; z-index: 20; pointer-events: none;
+    border: 2px solid rgba(21,154,97,0.5);
+    border-radius: 20px;
+  }
+  .cam-overlay-badge {
+    position: absolute; z-index: 30;
+    bottom: 10px; right: 10px;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(8px);
+    border-radius: 10px;
+    padding: 5px 10px;
+    font-size: 0.65rem; font-weight: 700; color: white;
+  }
+  .cam-overlay-badge.ok { background: rgba(16,185,129,0.8); }
+  .cam-overlay-badge.err { background: rgba(239,68,68,0.8); }
+  .cam-face-msg {
+    position: absolute; z-index: 30;
+    bottom: 10px; left: 10px;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(8px);
+    border-radius: 10px;
+    padding: 5px 10px;
+    font-size: 0.65rem; font-weight: 700; color: white;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
+    animation: dotPulse 1.5s ease-in-out infinite;
+  }
+  .dot-green { background: #10b981; }
+  .dot-yellow { background: #f59e0b; }
+  .dot-red { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.25); }
+  @keyframes dotPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* ── Big Action Buttons ─────────────── */
+  .checkin-btn-group {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  .action-btn {
+    border-radius: 16px;
+    padding: 16px 10px;
+    font-size: 0.82rem; font-weight: 800;
+    border: none; cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .action-btn .btn-icon { font-size: 1.6rem; }
+  .action-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+  .action-btn:not(:disabled):hover { transform: translateY(-2px); }
+  .action-btn:not(:disabled):active { transform: scale(0.97); }
+  .btn-checkin {
+    background: linear-gradient(135deg, #0e7e4f, #159a61);
+    color: white;
+    box-shadow: 0 6px 20px rgba(21,154,97,0.35);
+  }
+  .btn-checkout {
+    background: linear-gradient(135deg, #d97706, #f59e0b);
+    color: white;
+    box-shadow: 0 6px 20px rgba(245,158,11,0.35);
+  }
+  .btn-done {
+    background: #f1f5f9; color: #94a3b8;
+    box-shadow: none;
+  }
+
+  /* ── Confirm Btn ─────────────────────── */
+  .confirm-btn {
+    width: 100%; border-radius: 16px; padding: 15px;
+    font-size: 0.9rem; font-weight: 800; color: white;
+    border: none; cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .confirm-btn.checkin-mode { background: linear-gradient(135deg, #0e7e4f, #159a61); box-shadow: 0 6px 20px rgba(21,154,97,0.3); }
+  .confirm-btn.checkout-mode { background: linear-gradient(135deg, #d97706, #f59e0b); box-shadow: 0 6px 20px rgba(245,158,11,0.3); }
+  .confirm-btn:not(:disabled):hover { transform: translateY(-1px); }
+  .confirm-btn:not(:disabled):active { transform: scale(0.98); }
+
+  /* ── Stat Pill ───────────────────────── */
+  .stat-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    background: #f8fafc; border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.8rem;
+  }
+  .stat-pill .pill-icon { font-size: 1.1rem; }
+  .stat-pill .pill-label { color: #64748b; font-weight: 600; flex: 1; }
+  .stat-pill .pill-value { font-weight: 800; color: #0a4d2e; }
+
+  /* ── History Items ──────────────────── */
+  .history-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    background: white; border-radius: 14px;
+    border: 1px solid #e8f5ee;
+    margin-bottom: 8px;
+  }
+  .history-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: grid; place-items: center;
+    font-size: 0.85rem; font-weight: 800; flex-shrink: 0;
+  }
+  .h-icon-in { background: #dcf3e6; color: #0e7e4f; }
+  .h-icon-out { background: #fef3c7; color: #d97706; }
+  .h-icon-miss { background: #fee2e2; color: #ef4444; }
+  .h-icon-round { background: #ede9fe; color: #7c3aed; }
+
+  /* ── Midday status choices ───────────── */
+  .midday-choice {
+    border-radius: 14px; padding: 14px 12px;
+    background: white; border: 1.5px solid #e2e8f0;
+    cursor: pointer; text-align: left;
+    transition: all 0.15s;
+  }
+  .midday-choice:hover { border-color: #159a61; background: #f0faf4; }
+  .midday-choice.selected {
+    border-color: #159a61 !important;
+    background: #f0faf4 !important;
+    box-shadow: 0 0 0 3px rgba(21,154,97,0.12);
+  }
+  .midday-choice .ch-icon { font-size: 1.5rem; display: block; margin-bottom: 6px; }
+  .midday-choice .ch-label { font-size: 0.82rem; font-weight: 800; color: #0a4d2e; display: block; }
+  .midday-choice .ch-sub { font-size: 0.72rem; color: #94a3b8; display: block; margin-top: 3px; }
+
+  /* ── Round Card ─────────────────────── */
+  .round-card {
+    border-radius: 18px; background: white;
+    border: 1.5px solid #e8f5ee;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  }
+  .round-card-header {
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #f0faf4, #e5f7ee);
+    border-bottom: 1px solid #d1ead9;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .round-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 0.7rem; font-weight: 800;
+  }
+  .round-badge.open { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+  .round-badge.closed { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }
+  .round-badge.done { background: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
+
+  /* ── Progress Bar ─────────────────────── */
+  .conf-bar-wrap { height: 6px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+  .conf-bar-fill { height: 100%; border-radius: 99px; transition: width 0.3s ease, background 0.3s; }
+
+  /* ── Loading overlay ─────────────────── */
+  .page-loader {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 50vh; gap: 12px;
+    color: #94a3b8;
+  }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Success Card ─────────────────────── */
+  .success-hero {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 32px 20px; text-align: center;
+    background: linear-gradient(135deg, #0e7e4f, #159a61);
+    border-radius: 20px; color: white; margin-bottom: 16px;
+    box-shadow: 0 8px 24px rgba(21,154,97,0.3);
+  }
+  .pulse-ring {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 72px; height: 72px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    margin-bottom: 12px;
+    animation: ring 2s ease-in-out infinite;
+  }
+  @keyframes ring {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
+    50% { box-shadow: 0 0 0 14px rgba(255,255,255,0); }
+  }
+
+  /* ── Location check ─────────────────── */
+  .location-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: 12px;
+    font-size: 0.8rem; font-weight: 700;
+    border: 1px solid;
+  }
+  .location-row.ok { background: #f0faf4; border-color: #a7f3d0; color: #059669; }
+  .location-row.fail { background: #fff1f2; border-color: #fecdd3; color: #e11d48; }
+  .location-row.wait { background: #f8fafc; border-color: #e2e8f0; color: #94a3b8; }
+
+  /* Toast */
+  .toast-bar {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    z-index: 9999;
+    background: #0a4d2e; color: white;
+    padding: 12px 20px; border-radius: 14px;
+    font-size: 0.85rem; font-weight: 700;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+  }
+  .toast-bar.show { opacity: 1; }
+
+  /* Scrollable panels */
+  .panel-scroll { padding: 16px; max-width: 560px; margin: 0 auto; }
+
+  /* Utility */
+  .section-label {
+    font-size: 0.72rem; font-weight: 800; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin-bottom: 8px; display: block;
+  }
+
+  @media (min-width: 480px) {
+    .panel-scroll { padding: 20px; }
+    .camera-wrap { max-height: 320px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════
+     TOPBAR
+════════════════════════════════════ -->
+<header class="topbar" style="height:64px; display:flex; align-items:center; padding:0 16px; justify-content:space-between;">
+  <div style="display:flex; align-items:center; gap:10px;">
+    <img src="https://mstc23.rta.mi.th/amc23/img/23png.png" alt="Logo" style="width:34px;height:34px;border-radius:10px;object-fit:contain;">
+    <div>
+      <div style="font-size:0.95rem;font-weight:800;color:#0a4d2e;line-height:1.2;">รด. Check</div>
+      <div style="font-size:0.65rem;font-weight:600;color:#94a3b8;line-height:1;">ระบบเช็คชื่อ นศท.</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div id="clock-display" style="font-size:0.78rem;font-weight:700;color:#159a61;background:#f0faf4;border:1px solid #d1ead9;border-radius:10px;padding:5px 10px;">--:--</div>
+    <div id="topbar-user" style="position:relative;"></div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════
+     TAB BAR
+════════════════════════════════════ -->
+<div class="tab-bar" id="tab-bar">
+  <button class="tab-btn active" id="tab-checkin-btn" onclick="switchTab('checkin')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>เช็คชื่อ</span>
+    <span class="tab-badge hidden" id="tab-checkin-badge">!</span>
+  </button>
+  <button class="tab-btn" id="tab-midday-btn" onclick="switchTab('midday')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2"/><path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round"/></svg>
+    <span>เช็คยอดระหว่างวัน</span>
+    <span class="tab-badge hidden" id="tab-midday-badge">•</span>
+  </button>
+  <button class="tab-btn" id="tab-leave-btn" onclick="switchTab('leave')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 3v4a1 1 0 001 1h4M5 3h9l5 5v13H5a1 1 0 01-1-1V4a1 1 0 011-1zM8 13h8M8 17h6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>ขอลากิจ / ลาป่วย</span>
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 1: เช็คชื่อ
+════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-checkin">
+
+  <!-- ── Loader ── -->
+  <div id="checkin-loader" class="page-loader">
+    <svg class="spin" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#159a61" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+    <div style="font-weight:700;color:#0a4d2e;" id="checkin-loader-msg">กำลังโหลดระบบ...</div>
+    <div style="width:200px;height:4px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-top:4px;">
+      <div id="checkin-progress-bar" style="height:100%;background:#159a61;border-radius:99px;transition:width 0.4s;width:0%;"></div>
+    </div>
+  </div>
+
+  <!-- ── No Face State ── -->
+  <div id="checkin-no-face" class="panel-scroll" style="display:none; text-align:center; padding-top:60px;">
+    <div style="font-size:4rem;margin-bottom:16px;">😶</div>
+    <h2 style="font-size:1.4rem;font-weight:800;color:#0a4d2e;margin-bottom:8px;">ยังไม่ได้ลงทะเบียนใบหน้า</h2>
+    <p style="font-size:0.85rem;color:#94a3b8;margin-bottom:24px;">กรุณาติดต่อผู้ดูแลระบบเพื่อลงทะเบียน Face ID</p>
+  </div>
+
+  <!-- ── All Done State ── -->
+  <div id="checkin-done" class="panel-scroll" style="display:none;">
+    <div class="success-hero" id="done-hero">
+      <div class="pulse-ring"><span style="font-size:2rem;">🎉</span></div>
+      <h2 style="font-size:1.4rem;font-weight:900;margin-bottom:4px;">เสร็จเรียบร้อยแล้ว!</h2>
+      <p style="font-size:0.85rem;opacity:0.85;">เช็คชื่อครบทั้งวันแล้ว</p>
+    </div>
+    <div class="status-card" style="padding:20px;">
+      <span class="section-label">สรุปวันนี้</span>
+      <div class="stat-pill" style="margin-bottom:8px;">
+        <span class="pill-icon">⏰</span>
+        <span class="pill-label">เช็คเข้า</span>
+        <span class="pill-value" id="done-in-time">--</span>
+      </div>
+      <div class="stat-pill">
+        <span class="pill-icon">🏁</span>
+        <span class="pill-label">เช็คออก</span>
+        <span class="pill-value" id="done-out-time">--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main Check-in UI ── -->
+  <div id="checkin-main" style="display:none;">
+    <!-- User Hero -->
+    <div class="user-hero" id="checkin-user-hero">
+      <div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1;">
+        <div class="user-hero-avatar" id="hero-avatar">?</div>
+        <div>
+          <div style="font-size:1.05rem;font-weight:800;line-height:1.2;" id="hero-name">--</div>
+          <div style="font-size:0.72rem;opacity:0.8;margin-top:2px;" id="hero-detail">--</div>
+        </div>
+        <div style="margin-left:auto;background:rgba(255,255,255,0.2);border-radius:12px;padding:8px 14px;text-align:center;">
+          <div style="font-size:0.6rem;opacity:0.8;font-weight:700;">สถานะวันนี้</div>
+          <div style="font-size:0.85rem;font-weight:900;" id="hero-status">--</div>
+        </div>
+      </div>
+      <!-- Quick status pills -->
+      <div style="display:flex;gap:8px;margin-top:14px;position:relative;z-index:1;">
+        <span id="badge-in" style="background:rgba(255,255,255,0.2);border-radius:20px;padding:4px 12px;font-size:0.68rem;font-weight:700;">⏳ ยังไม่เช็คเข้า</span>
+        <span id="badge-out" style="background:rgba(255,255,255,0.2);border-radius:20px;padding:4px 12px;font-size:0.68rem;font-weight:700;">⏳ ยังไม่เช็คออก</span>
+      </div>
+    </div>
+
+    <div class="panel-scroll">
+      <!-- Mode Select Buttons (big) -->
+      <div class="checkin-btn-group" style="margin-bottom:16px;">
+        <button class="action-btn btn-checkin" id="btn-mode-in" onclick="setCheckMode('checkin')">
+          <span class="btn-icon">⏰</span>
+          <span>เช็คเข้า</span>
+        </button>
+        <button class="action-btn btn-checkout" id="btn-mode-out" onclick="setCheckMode('checkout')">
+          <span class="btn-icon">🏁</span>
+          <span>เช็คออก</span>
+        </button>
+      </div>
+
+      <!-- Camera Card -->
+      <div class="status-card" style="padding:0;overflow:hidden;margin-bottom:14px;" id="camera-card">
+        <div style="padding:14px 16px 10px;border-bottom:1px solid #f0faf4;">
+          <div style="font-size:0.75rem;font-weight:800;color:#159a61;text-transform:uppercase;letter-spacing:0.07em;" id="cam-mode-label">📷 สแกนใบหน้า — เช็คเข้า</div>
+        </div>
+        <div style="padding:14px 16px;">
+          <div class="camera-wrap" id="camera-wrap">
+            <video id="camera-video" playsinline muted autoplay></video>
+            <canvas id="camera-canvas"></canvas>
+            <div class="face-frame" id="face-frame"></div>
+            <div class="cam-face-msg" id="cam-face-msg">
+              <span class="status-dot dot-yellow" id="dot-face"></span>
+              <span id="face-msg-text">รอตรวจสอบ...</span>
+            </div>
+            <div class="cam-overlay-badge" id="cam-status-badge">กำลังตรวจสอบ</div>
+          </div>
+
+          <!-- Confidence Bar -->
+          <div id="conf-wrap" style="margin-top:12px;display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+              <span style="font-size:0.68rem;font-weight:700;color:#94a3b8;text-transform:uppercase;">Face AI Confidence</span>
+              <span style="font-size:0.72rem;font-weight:800;color:#0a4d2e;" id="conf-pct">0%</span>
+            </div>
+            <div class="conf-bar-wrap">
+              <div class="conf-bar-fill" id="conf-bar" style="width:0%;background:#10b981;"></div>
+            </div>
+          </div>
+
+          <!-- Location Status -->
+          <div id="location-row" class="location-row wait" style="margin-top:12px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            <span id="location-text">กำลังตรวจสอบพิกัด...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirm Button -->
+      <button id="confirm-btn" class="confirm-btn checkin-mode" disabled onclick="doConfirmCheckin()">
+        <span id="confirm-btn-icon">⏳</span>
+        <span id="confirm-btn-text">รอยืนยันใบหน้า...</span>
+      </button>
+      <button id="retry-btn" onclick="retryInit()" style="display:none;width:100%;border-radius:14px;padding:13px;margin-top:10px;background:white;border:1.5px solid #e2e8f0;font-size:0.85rem;font-weight:700;color:#64748b;cursor:pointer;">
+        🔄 ลองใหม่อีกครั้ง
+      </button>
+
+      <!-- Today Summary -->
+      <div style="margin-top:20px;">
+        <span class="section-label">บันทึกวันนี้</span>
+        <div id="today-history">
+          <div style="text-align:center;padding:20px;color:#94a3b8;font-size:0.82rem;">กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Attendance History Section (Appended to Tab 1 - Always Visible) -->
+  <div class="panel-scroll" style="margin-top:10px;">
+    <div class="status-card" style="margin-bottom:16px; padding:20px; background: linear-gradient(135deg, #ffffff 0%, #f0faf4 100%);">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+        <div>
+          <h2 style="font-size:1.15rem; font-weight:800; color:#0a4d2e; display:flex; align-items:center; gap:8px;">
+            <span>📜</span> ประวัติการลงเวลาเรียนทั้งหมด
+          </h2>
+          <div style="font-size:0.78rem; font-weight:600; color:#475569; margin-top:4px; background:#e5f7ee; border:1px solid #c3edd5; border-radius:10px; padding:6px 12px; display:inline-block;">
+            * เงื่อนไขการผ่าน: ต้องมีเวลาปฏิบัติหน้าที่ครบตามกำหนดอย่างน้อย <strong id="req-sessions-count" style="color:#0e7e4f; font-size:0.95rem;">10</strong> ครั้ง
+          </div>
+        </div>
+        <div id="history-pass-badge" style="font-size:0.82rem; font-weight:800; padding:6px 14px; border-radius:20px; background:#f1f5f9; color:#64748b;">
+          ⏳ กำลังโหลด...
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div style="margin-top:14px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:700; color:#475569; margin-bottom:5px;">
+          <span>จำนวนครั้งที่เข้าปฏิบัติหน้าที่</span>
+          <span id="history-progress-text" style="color:#0a4d2e;">0 / 10 ครั้ง</span>
+        </div>
+        <div class="conf-bar-wrap" style="height:10px; background:#e2e8f0;">
+          <div class="conf-bar-fill" id="history-progress-bar" style="width:0%; background:#10b981;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Table -->
+    <div class="status-card" style="padding:0; overflow:hidden; border-radius:18px;">
+      <div style="padding:14px 18px; border-bottom:1px solid #e8f5ee; display:flex; justify-content:space-between; align-items:center; background:#ffffff;">
+        <span style="font-size:0.88rem; font-weight:800; color:#0a4d2e;">📋 รายการบันทึกการเรียน</span>
+        <button onclick="loadHistoryTab(true)" style="background:#f0faf4; border:1px solid #c3edd5; border-radius:10px; padding:5px 12px; font-size:0.75rem; font-weight:700; color:#0e7e4f; cursor:pointer;">🔄 รีเฟรช</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.83rem;">
+          <thead>
+            <tr style="background:#f0faf4; color:#0a4d2e; border-bottom:1.5px solid #d1ead9; font-weight:800;">
+              <th style="padding:12px 14px; text-align:center; width:70px;">ครั้งที่</th>
+              <th style="padding:12px 14px;">วันที่เข้าเรียน</th>
+              <th style="padding:12px 14px;">เวลาเข้า (In)</th>
+              <th style="padding:12px 14px;">เวลาออก (Out)</th>
+              <th style="padding:12px 14px; text-align:center; width:110px;">สถานะ</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body" style="color:#1e293b;">
+            <!-- Dynamic Rows -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 2: เช็คยอดระหว่างวัน
+════════════════════════════════════ -->
+<div class="tab-panel" id="tab-midday">
+  <div id="midday-loader" class="page-loader">
+    <svg class="spin" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#159a61" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+    <div style="font-weight:700;color:#0a4d2e;">กำลังโหลด...</div>
+  </div>
+
+  <div id="midday-main" style="display:none;">
+    <div class="panel-scroll">
+      <!-- Active Round Card -->
+      <div id="midday-round-card" class="round-card" style="margin-bottom:16px;">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- History -->
+      <div>
+        <span class="section-label">รอบที่เช็ควันนี้</span>
+        <div id="midday-history-list">
+          <div style="text-align:center;padding:20px;color:#94a3b8;font-size:0.85rem;">กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 3: ขอลากิจ / ลาป่วย
+════════════════════════════════════ -->
+<div class="tab-panel" id="tab-leave">
+  <div class="panel-scroll" style="max-width:760px;">
+    <!-- Leave Form Card -->
+    <div class="status-card" style="margin-bottom:16px; padding:20px;">
+      <div style="font-size:1.1rem; font-weight:800; color:#0a4d2e; margin-bottom:4px; display:flex; align-items:center; gap:8px;">
+        <span>📝</span> แบบฟอร์มขอลาเรียน
+      </div>
+      <p style="font-size:0.78rem; color:#64748b; margin-bottom:16px;">
+        ส่งคำร้องขอลากิจ หรือ ลาป่วย ใบลาจะถูกส่งไปยังครูฝึกเพื่อพิจารณาอนุมัติ
+      </p>
+
+      <form id="student-leave-form" onsubmit="handleLeaveFormSubmit(event)">
+        <!-- Leave Type -->
+        <div style="margin-bottom:14px;">
+          <label class="section-label">ประเภทการลา</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <button type="button" class="tab-btn active" id="type-btn-personal" style="border-radius:12px; border:1.5px solid #159a61; padding:10px; justify-content:center;" onclick="setLeaveTypeSelect('personal')">📋 ลากิจ</button>
+            <button type="button" class="tab-btn" id="type-btn-sick" style="border-radius:12px; border:1.5px solid #e2e8f0; padding:10px; justify-content:center;" onclick="setLeaveTypeSelect('sick')">🏥 ลาป่วย</button>
+          </div>
+          <input type="hidden" id="leave-type-val" value="personal">
+        </div>
+
+        <!-- Date range -->
+        <div class="leave-date-grid">
+          <div>
+            <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">วันที่เริ่มลา</label>
+            <input type="date" id="leave-start-date" required onchange="calcLeaveDays()" style="width:100%; border-radius:12px; border:1.5px solid #e2e8f0; padding:10px 12px; font-size:0.85rem; font-weight:700; color:#0a4d2e; box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">วันที่กลับ</label>
+            <input type="date" id="leave-end-date" required onchange="calcLeaveDays()" style="width:100%; border-radius:12px; border:1.5px solid #e2e8f0; padding:10px 12px; font-size:0.85rem; font-weight:700; color:#0a4d2e; box-sizing:border-box;">
+          </div>
+        </div>
+
+        <!-- Days count info -->
+        <div id="leave-days-info" style="display:none; margin-bottom:14px; background:#f0faf4; border:1px solid #a7f3d0; border-radius:12px; padding:10px 14px; font-size:0.8rem; font-weight:700; color:#059669; align-items:center; gap:8px;">
+          <span>📅</span> <span id="leave-days-count-text">0 วัน</span>
+        </div>
+
+        <!-- Reason -->
+        <div style="margin-bottom:14px;">
+          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">เหตุผลการลา</label>
+          <textarea id="leave-reason-text" rows="3" required placeholder="ระบุเหตุผลการลาให้ชัดเจน..." style="width:100%; border-radius:12px; border:1.5px solid #e2e8f0; padding:10px 14px; font-size:0.85rem; box-sizing:border-box; resize:none;"></textarea>
+        </div>
+
+        <!-- Attachment -->
+        <div style="margin-bottom:18px;">
+          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">หลักฐานประกอบ (ถ้ามี)</label>
+          <input type="file" id="leave-evidence-file" accept="image/*,.pdf" style="font-size:0.8rem; color:#64748b; width:100%;">
+        </div>
+
+        <button type="submit" id="submit-leave-btn" class="confirm-btn checkin-mode" style="width:100%;">
+          <span>📤</span> ส่งคำร้องขอลากิจ / ลาป่วย
+        </button>
+      </form>
+    </div>
+
+    <!-- Student Leave History Card -->
+    <div class="status-card" style="padding:18px;">
+      <span class="section-label">ประวัติการขอลาของคุณ</span>
+      <div id="my-leave-history-list" style="margin-top:10px;">
+        <div style="text-align:center; padding:20px; color:#94a3b8; font-size:0.85rem;">กำลังโหลด...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-bar" id="toast-bar">
+  <span id="toast-icon">✓</span>
+  <span id="toast-text">ดำเนินการสำเร็จ</span>
+</div>
+
+<!-- ── Scripts ────────────────────── -->
+<script src="js/firebase-config.js"></script>
+<script src="js/utils.js?v=2"></script>
+<script src="js/datepicker.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/attendance.js"></script>
+<script src="js/midday.js"></script>
+<script src="js/drive-upload.js"></script>
+<script src="js/leave.js"></script>
+<script src="js/gas-webhook.js"></script>
+<script src="js/face-recognition.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  STUDENT PORTAL — Main Controller
+// ═══════════════════════════════════════════════════════
+
+var _currentUser     = null;
+var _cameraStream    = null;
+var _locationResult  = null;
+var _faceVerified    = false;
+var _locationValid   = false;
+var _verifyInterval  = null;
+var _currentMode     = 'checkin'; // 'checkin' | 'checkout'
+var _canCheckin      = true;
+var _canCheckout     = false;
+var _todayAttendance = null;
+
+// Midday state
+var _middayRound     = null;
+var _middayStatus    = null;
+var _middayCamStream = null;
+var _middayFaceVerified = false;
+var _middayVerifyInterval = null;
+
+// ── Clock ───────────────────────────────────────────────
+setInterval(function() {
+  var el = document.getElementById('clock-display');
+  if (el) el.textContent = new Date().toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'});
+}, 1000);
+
+// ── Tab Switching ────────────────────────────────────────
+var _activeTab = 'checkin';
+function switchTab(tab) {
+  _activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab + '-btn').classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+
+  if (tab === 'midday' && _currentUser) {
+    loadMiddayTab();
+  }
+  if (tab === 'leave' && _currentUser) {
+    loadLeaveTab();
+  }
+}
+
+// ── Toast ────────────────────────────────────────────────
+var _toastTimer = null;
+function showToastBar(msg, isError) {
+  var el = document.getElementById('toast-bar');
+  var iconEl = document.getElementById('toast-icon');
+  var textEl = document.getElementById('toast-text');
+  if (!el) return;
+  el.style.background = isError ? '#991b1b' : '#0a4d2e';
+  iconEl.textContent = isError ? '✗' : '✓';
+  textEl.textContent = msg;
+  el.classList.add('show');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+// ── Auth ─────────────────────────────────────────────────
+auth.onAuthStateChanged(async function(user) {
+  if (!user) { window.location.href = 'index.html'; return; }
+  var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+  if (!snap.exists) { auth.signOut(); window.location.href = 'index.html'; return; }
+  _currentUser = Object.assign({ uid: user.uid }, snap.data());
+
+  // Redirect non-students to dashboard
+  if (_currentUser.role && _currentUser.role > 1) {
+    window.location.href = 'dashboard.html';
+    return;
+  }
+
+  renderTopbarUserSimple(_currentUser);
+  initCheckinTab();
+  initMiddayRealtimeListener();
+});
+
+// ── Real-time Midday Check Notification Listener ────────
+var _middayUnsub = null;
+var _lastNotifiedRoundId = null;
+
+function initMiddayRealtimeListener() {
+  if (!_currentUser || (_currentUser.role && _currentUser.role > 1)) return;
+  if (_middayUnsub) _middayUnsub();
+
+  _middayUnsub = db.collection(COLLECTIONS.MIDDAY)
+                   .doc(today())
+                   .collection('rounds')
+                   .onSnapshot(async function(snapshot) {
+                     var badge = document.getElementById('tab-midday-badge');
+                     if (snapshot.empty) {
+                       if (badge) badge.classList.add('hidden');
+                       return;
+                     }
+
+                     var openRounds = snapshot.docs
+                       .map(function(d) { return Object.assign({ id: d.id }, d.data()); })
+                       .filter(function(r) { return r.open === true; })
+                       .sort(function(a, b) { 
+                         var at = a.createdAt ? (a.createdAt.seconds || 0) : 0;
+                         var bt = b.createdAt ? (b.createdAt.seconds || 0) : 0;
+                         return bt - at;
+                       });
+
+                     if (!openRounds.length) {
+                       if (badge) badge.classList.add('hidden');
+                       return;
+                     }
+
+                     var latestOpen = openRounds[0];
+                     var myCheck = await getMyMiddayCheck(latestOpen.id, _currentUser.uid);
+
+                     if (myCheck) {
+                       if (badge) {
+                         badge.classList.remove('hidden');
+                         badge.textContent = '✓';
+                         badge.style.background = '#10b981';
+                       }
+                     } else {
+                       if (badge) {
+                         badge.classList.remove('hidden');
+                         badge.textContent = '!';
+                         badge.style.background = '#ef4444';
+                       }
+
+                       if (_lastNotifiedRoundId !== latestOpen.id) {
+                         _lastNotifiedRoundId = latestOpen.id;
+                         showToastBar('🔔 เปิดรอบเช็คยอดแล้ว (รอบที่ ' + latestOpen.roundNumber + ')', false);
+                         
+                         if (typeof window.Swal !== 'undefined') {
+                           Swal.fire({
+                             icon: 'warning',
+                             title: '🔔 แจ้งเตือนเช็คยอดระหว่างวัน',
+                             html: 'ครูฝึก/ผู้ดูแลได้เปิดรอบเช็คยอด <b>รอบที่ ' + latestOpen.roundNumber + '</b><br>กรุณารายงานตัวทันที',
+                             confirmButtonText: 'ไปหน้ารายงานตัว',
+                             showCancelButton: true,
+                             cancelButtonText: 'รับทราบ',
+                             confirmButtonColor: '#159a61'
+                           }).then(function(res) {
+                             if (res.isConfirmed) {
+                               switchTab('midday');
+                             }
+                           });
+                         }
+                       }
+                     }
+
+                     if (_activeTab === 'midday') {
+                       refreshMiddayTab();
+                     }
+                   }, function(err) {
+                     console.warn('Midday listener error:', err);
+                   });
+}
+
+// ── Topbar User (simplified) ─────────────────────────────
+function renderTopbarUserSimple(user) {
+  var el = document.getElementById('topbar-user');
+  if (!el) return;
+  var name = user.name || user.studentId || 'นศท.';
+  var av = initials ? initials(name) : name.charAt(0);
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#f0faf4;border:1px solid #d1ead9;border-radius:12px;padding:6px 12px 6px 6px;" id="user-pill" onclick="toggleUserMenu()">
+      <div style="width:30px;height:30px;border-radius:9px;background:#159a61;color:white;display:grid;place-items:center;font-size:0.7rem;font-weight:900;">${escapeHtml ? escapeHtml(av) : av}</div>
+      <span style="font-size:0.8rem;font-weight:700;color:#0a4d2e;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml ? escapeHtml(name.split(' ')[0]) : name.split(' ')[0]}</span>
+    </div>
+    <div id="user-menu-drop" style="display:none;position:absolute;right:0;top:46px;background:white;border:1px solid #e8f5ee;border-radius:16px;padding:8px;z-index:200;box-shadow:0 12px 40px rgba(0,0,0,0.1);min-width:180px;">
+      <div style="padding:10px 12px 8px;border-bottom:1px solid #f0faf4;margin-bottom:4px;">
+        <div style="font-weight:800;font-size:0.85rem;color:#0a4d2e;">${escapeHtml ? escapeHtml(name) : name}</div>
+        <div style="font-size:0.72rem;color:#94a3b8;">นักศึกษาวิชาทหาร · ${user.studentId || ''}</div>
+      </div>
+      <button onclick="openSwitchAccountModal()" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;border:none;background:transparent;color:#0a4d2e;font-size:0.82rem;font-weight:700;cursor:pointer;border-radius:10px;border-bottom:1px solid #f0faf4;margin-bottom:4px;text-align:left;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 110-8 4 4 0 010 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        สลับบัญชี
+      </button>
+      <button onclick="logout()" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;border:none;background:transparent;color:#ef4444;font-size:0.82rem;font-weight:700;cursor:pointer;border-radius:10px;text-align:left;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 00-2-2h-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ออกจากระบบ
+      </button>
+    </div>
+  `;
+  document.addEventListener('click', function(e) {
+    var pill = document.getElementById('user-pill');
+    var drop = document.getElementById('user-menu-drop');
+    if (pill && drop && !pill.contains(e.target) && !drop.contains(e.target)) drop.style.display = 'none';
+  });
+}
+function toggleUserMenu() {
+  var drop = document.getElementById('user-menu-drop');
+  if (drop) drop.style.display = drop.style.display === 'none' ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════
+//  TAB 1: เช็คชื่อ
+// ═══════════════════════════════════════════════════════
+
+var _attendanceRules = null;
+
+async function initCheckinTab() {
+  setProgress(20, 'ตรวจสอบสถานะวันนี้...');
+
+  _todayAttendance = await getTodayAttendance(_currentUser.uid).catch(() => null);
+  _attendanceRules = await getAttendanceRules().catch(() => null);
+
+  _canCheckin  = !_todayAttendance || !_todayAttendance.checkInTime;
+  _canCheckout = !!_todayAttendance && !!_todayAttendance.checkInTime && !_todayAttendance.checkOutTime;
+
+  // Populate hero
+  populateHero(_currentUser, _todayAttendance);
+
+  // Check tab badge
+  if (_canCheckin || _canCheckout) {
+    document.getElementById('tab-checkin-badge').classList.remove('hidden');
+  }
+
+  // Always load full attendance history for Tab 1
+  loadHistoryTab();
+
+  // All done
+  if (!_canCheckin && !_canCheckout && _todayAttendance) {
+    document.getElementById('checkin-loader').style.display = 'none';
+    document.getElementById('checkin-done').style.display = 'block';
+    document.getElementById('done-in-time').textContent = formatTime(_todayAttendance.checkInTime);
+    document.getElementById('done-out-time').textContent = _todayAttendance.checkOutTime ? formatTime(_todayAttendance.checkOutTime) : '--';
+    renderTodayHistory(_todayAttendance);
+    return;
+  }
+
+  // No face registered
+  if (!_currentUser.faceDescriptor) {
+    document.getElementById('checkin-loader').style.display = 'none';
+    document.getElementById('checkin-no-face').style.display = 'block';
+    return;
+  }
+
+  // Set initial mode
+  _currentMode = _canCheckin ? 'checkin' : 'checkout';
+  applyMode(_currentMode);
+  updateModeButtons();
+  updateBadges(_todayAttendance);
+
+  setProgress(40, 'โหลด Face AI...');
+  try {
+    await loadFaceModels(function(msg) { setProgress(null, msg); });
+  } catch(e) {
+    document.getElementById('checkin-loader-msg').textContent = 'โหลด AI ไม่สำเร็จ: ' + e.message;
+    document.getElementById('retry-btn').style.display = 'block';
+    return;
+  }
+
+  setProgress(75, 'เปิดกล้อง...');
+  try {
+    _cameraStream = await startCamera(document.getElementById('camera-video'));
+  } catch(e) {
+    document.getElementById('checkin-loader-msg').textContent = 'เปิดกล้องไม่ได้';
+    document.getElementById('retry-btn').style.display = 'block';
+    return;
+  }
+
+  setProgress(90, 'ตรวจสอบพิกัด...');
+  try {
+    _locationResult = await checkLocationInGeofence();
+    _locationValid = _locationResult.valid;
+    updateLocationRow(_locationResult);
+  } catch(e) {
+    _locationValid = false;
+    updateLocationRow(null);
+  }
+
+  setProgress(100, 'พร้อมแล้ว!');
+  setTimeout(function() {
+    document.getElementById('checkin-loader').style.display = 'none';
+    document.getElementById('checkin-main').style.display = 'block';
+    renderTodayHistory(_todayAttendance);
+    loadHistoryTab();
+    startFaceLoop();
+  }, 400);
+}
+
+function setProgress(pct, msg) {
+  if (pct !== null) document.getElementById('checkin-progress-bar').style.width = pct + '%';
+  if (msg) document.getElementById('checkin-loader-msg').textContent = msg;
+}
+
+function populateHero(user, att) {
+  var name = user.name || user.studentId || '--';
+  var detail = [user.company || '', user.platoon || '', user.school || ''].filter(Boolean).join(' · ');
+  document.getElementById('hero-name').textContent = name;
+  document.getElementById('hero-detail').textContent = detail || 'นักศึกษาวิชาทหาร';
+
+  var avatar = document.getElementById('hero-avatar');
+  if (user.profilePhotoUrl) {
+    avatar.innerHTML = '<img src="' + user.profilePhotoUrl + '" style="width:100%;height:100%;object-fit:cover;">';
+  } else {
+    avatar.textContent = initials ? initials(name) : name.charAt(0);
+  }
+
+  // Status
+  var statusEl = document.getElementById('hero-status');
+  if (!att) statusEl.textContent = '🔴 ยังไม่เช็คเข้า';
+  else if (att.checkInTime && !att.checkOutTime) {
+    statusEl.textContent = att.status === 'late' ? '⚠️ เข้า (สาย)' : '🟡 รอเช็คออก';
+  } else if (att.checkInTime && att.checkOutTime) {
+    statusEl.textContent = '🟢 ครบแล้ว';
+  }
+}
+
+function updateBadges(att) {
+  var inBadge = document.getElementById('badge-in');
+  var outBadge = document.getElementById('badge-out');
+  if (att && att.checkInTime) {
+    inBadge.textContent = '✅ เข้า ' + formatTime(att.checkInTime);
+    inBadge.style.background = 'rgba(16,185,129,0.3)';
+  }
+  if (att && att.checkOutTime) {
+    outBadge.textContent = '✅ ออก ' + formatTime(att.checkOutTime);
+    outBadge.style.background = 'rgba(16,185,129,0.3)';
+  }
+}
+
+function updateModeButtons() {
+  var btnIn  = document.getElementById('btn-mode-in');
+  var btnOut = document.getElementById('btn-mode-out');
+  if (!btnIn || !btnOut) return;
+  btnIn.disabled  = !_canCheckin;
+  btnOut.disabled = !_canCheckout;
+  if (!_canCheckin) {
+    btnIn.classList.remove('btn-checkin');
+    btnIn.classList.add('btn-done');
+    btnIn.innerHTML = '<span class="btn-icon">✅</span><span style="font-size:0.75rem">เช็คเข้าแล้ว</span>';
+  }
+  if (!_canCheckout && _todayAttendance && _todayAttendance.checkOutTime) {
+    btnOut.classList.remove('btn-checkout');
+    btnOut.classList.add('btn-done');
+    btnOut.innerHTML = '<span class="btn-icon">✅</span><span style="font-size:0.75rem">เช็คออกแล้ว</span>';
+  }
+}
+
+function setCheckMode(mode) {
+  if (mode === 'checkin' && !_canCheckin) return;
+  if (mode === 'checkout' && !_canCheckout) return;
+  _currentMode = mode;
+  applyMode(mode);
+  updateConfirmButton();
+}
+
+function applyMode(mode) {
+  var label = document.getElementById('cam-mode-label');
+  var btn   = document.getElementById('confirm-btn');
+  if (!btn) return;
+  if (mode === 'checkin') {
+    label.textContent = '📷 สแกนใบหน้า — เช็คเข้า';
+    btn.className = 'confirm-btn checkin-mode';
+  } else {
+    label.textContent = '📷 สแกนใบหน้า — เช็คออก';
+    btn.className = 'confirm-btn checkout-mode';
+  }
+}
+
+function updateLocationRow(result) {
+  var row = document.getElementById('location-row');
+  var txt = document.getElementById('location-text');
+  if (!row || !txt) return;
+  if (!result) {
+    row.className = 'location-row wait';
+    txt.textContent = '⚠️ ไม่สามารถระบุตำแหน่งได้';
+  } else if (result.valid) {
+    row.className = 'location-row ok';
+    txt.textContent = '✅ อยู่ในพื้นที่ฝึก (' + (result.dist || 0) + ' ม.)';
+  } else {
+    row.className = 'location-row fail';
+    txt.textContent = '❌ อยู่นอกพื้นที่ฝึก (' + (result.dist || 0) + ' ม.)';
+  }
+}
+
+function startFaceLoop() {
+  var video  = document.getElementById('camera-video');
+  var canvas = document.getElementById('camera-canvas');
+
+  startDetectionLoop(video, canvas, function(count) {
+    // basic count feedback
+  });
+
+  var refDesc = Float32Array.from(Object.values(_currentUser.faceDescriptor));
+
+  _verifyInterval = setInterval(async function() {
+    try {
+      var result = await verifyFace(video, _currentUser.faceDescriptor);
+      _faceVerified = result.verified;
+
+      var pct = result.confidence;
+      document.getElementById('conf-wrap').style.display = 'block';
+      document.getElementById('conf-pct').textContent = pct + '%';
+      document.getElementById('conf-bar').style.width = pct + '%';
+      document.getElementById('conf-bar').style.background = pct >= 60 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#ef4444';
+
+      var dot  = document.getElementById('dot-face');
+      var msg  = document.getElementById('face-msg-text');
+      var badge = document.getElementById('cam-status-badge');
+
+      if (result.verified) {
+        dot.className = 'status-dot dot-green';
+        msg.textContent = '✓ ยืนยันใบหน้าแล้ว';
+        badge.className = 'cam-overlay-badge ok';
+        badge.textContent = 'พบ: ' + (_currentUser.name || '').split(' ')[0];
+      } else {
+        dot.className = 'status-dot dot-red';
+        msg.textContent = '✗ ไม่ตรงกับที่ลงทะเบียน';
+        badge.className = 'cam-overlay-badge err';
+        badge.textContent = result.msg ? result.msg.substring(0,20) : 'ไม่ผ่าน';
+      }
+      updateConfirmButton();
+    } catch(e) {}
+  }, 2000);
+}
+
+function updateConfirmButton() {
+  var btn = document.getElementById('confirm-btn');
+  var icon = document.getElementById('confirm-btn-icon');
+  var text = document.getElementById('confirm-btn-text');
+  if (!btn) return;
+
+  var timeVal = validateAttendanceTime(_currentMode, _attendanceRules);
+  var canDo = _faceVerified && _locationValid && timeVal.allowed;
+  btn.disabled = !canDo;
+
+  if (!timeVal.allowed) {
+    icon.textContent = '⛔';
+    text.textContent = timeVal.msg || 'ไม่อยู่ในช่วงเวลาที่กำหนด';
+  } else if (canDo) {
+    icon.textContent = '✅';
+    if (_currentMode === 'checkin') {
+      text.textContent = timeVal.status === 'late' ? '⚠️ ยืนยันเช็คเข้า (สาย)' : 'ยืนยันเช็คเข้า';
+    } else {
+      text.textContent = 'ยืนยันเช็คออก';
+    }
+  } else if (!_faceVerified) {
+    icon.textContent = '⏳';
+    text.textContent = 'รอยืนยันใบหน้า...';
+  } else {
+    icon.textContent = '📍';
+    text.textContent = 'อยู่นอกพื้นที่ ไม่สามารถบันทึกได้';
+  }
+}
+
+async function doConfirmCheckin() {
+  var timeVal = validateAttendanceTime(_currentMode, _attendanceRules);
+  if (!timeVal.allowed) {
+    if (typeof window.showAlertPopup === 'function') {
+      showAlertPopup('ไม่อนุญาตให้บันทึกเวลา', timeVal.msg, 'warning');
+    } else {
+      showToastBar(timeVal.msg, true);
+    }
+    return;
+  }
+
+  if (!_faceVerified || !_locationValid) return;
+  var btn = document.getElementById('confirm-btn');
+  var origText = document.getElementById('confirm-btn-text').textContent;
+  btn.disabled = true;
+  document.getElementById('confirm-btn-icon').textContent = '⏳';
+  document.getElementById('confirm-btn-text').textContent = 'กำลังบันทึก...';
+
+  stopDetectionLoop();
+  clearInterval(_verifyInterval);
+
+  try {
+    if (_currentMode === 'checkin') {
+      await recordCheckIn(_currentUser.uid, _currentUser, _locationResult, _faceVerified, timeVal.status || 'present');
+    } else {
+      await recordCheckOut(_currentUser.uid, _locationResult, _faceVerified);
+    }
+
+    stopCamera(document.getElementById('camera-video'));
+    var successMsg = _currentMode === 'checkin'
+      ? (timeVal.status === 'late' ? '⚠️ เช็คเข้าสำเร็จ (สาย)' : '✅ เช็คเข้าสำเร็จ!')
+      : '🏁 เช็คออกสำเร็จ!';
+    showToastBar(successMsg, false);
+
+    // Refresh
+    _todayAttendance = await getTodayAttendance(_currentUser.uid).catch(() => null);
+    _canCheckin  = !_todayAttendance || !_todayAttendance.checkInTime;
+    _canCheckout = !!_todayAttendance && !!_todayAttendance.checkInTime && !_todayAttendance.checkOutTime;
+
+    populateHero(_currentUser, _todayAttendance);
+    updateBadges(_todayAttendance);
+    renderTodayHistory(_todayAttendance);
+
+    // If all done
+    if (!_canCheckin && !_canCheckout) {
+      document.getElementById('checkin-main').style.display = 'none';
+      document.getElementById('checkin-done').style.display = 'block';
+      if (_todayAttendance) {
+        document.getElementById('done-in-time').textContent  = formatTime(_todayAttendance.checkInTime);
+        document.getElementById('done-out-time').textContent = _todayAttendance.checkOutTime ? formatTime(_todayAttendance.checkOutTime) : '--';
+      }
+      return;
+    }
+
+    // Switch mode if checkin done
+    if (!_canCheckin && _canCheckout) {
+      _currentMode = 'checkout';
+      applyMode('checkout');
+      updateModeButtons();
+      // Restart camera
+      _faceVerified = false;
+      _cameraStream = await startCamera(document.getElementById('camera-video'));
+      startFaceLoop();
+    }
+  } catch(e) {
+    showToastBar('เกิดข้อผิดพลาด: ' + e.message, true);
+    btn.disabled = false;
+    document.getElementById('confirm-btn-icon').textContent = '⚠️';
+    document.getElementById('confirm-btn-text').textContent = origText;
+    // Restart detection
+    startFaceLoop();
+  }
+}
+
+function renderTodayHistory(att) {
+  var el = document.getElementById('today-history');
+  if (!el) return;
+  if (!att) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:0.82rem;">ยังไม่มีบันทึกวันนี้</div>';
+    return;
+  }
+  var html = '';
+  if (att.checkInTime) {
+    html += `<div class="history-item">
+      <div class="history-icon h-icon-in">เข้า</div>
+      <div>
+        <div style="font-size:0.82rem;font-weight:800;color:#0a4d2e;">เช็คเข้า</div>
+        <div style="font-size:0.75rem;color:#94a3b8;margin-top:2px;">เวลา ${formatTime(att.checkInTime)}</div>
+      </div>
+      <div style="margin-left:auto;font-size:1rem;">✅</div>
+    </div>`;
+  }
+  if (att.checkOutTime) {
+    html += `<div class="history-item">
+      <div class="history-icon h-icon-out">ออก</div>
+      <div>
+        <div style="font-size:0.82rem;font-weight:800;color:#0a4d2e;">เช็คออก</div>
+        <div style="font-size:0.75rem;color:#94a3b8;margin-top:2px;">เวลา ${formatTime(att.checkOutTime)}</div>
+      </div>
+      <div style="margin-left:auto;font-size:1rem;">🏁</div>
+    </div>`;
+  }
+  el.innerHTML = html || '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:0.82rem;">ยังไม่มีบันทึก</div>';
+}
+
+function retryInit() {
+  document.getElementById('retry-btn').style.display = 'none';
+  document.getElementById('checkin-loader').style.display = 'flex';
+  document.getElementById('checkin-main').style.display = 'none';
+  initCheckinTab();
+}
+
+// ═══════════════════════════════════════════════════════
+//  TAB 2: เช็คยอดระหว่างวัน
+// ═══════════════════════════════════════════════════════
+
+var _middayLoaded = false;
+
+async function loadMiddayTab() {
+  if (_middayLoaded) return; // already loaded, live updates only
+  var loader = document.getElementById('midday-loader');
+  var main   = document.getElementById('midday-main');
+  loader.style.display = 'flex';
+  main.style.display   = 'none';
+
+  try {
+    _middayRound = await getLatestOpenRound();
+    var allRounds = await getTodayRounds();
+    renderMiddayRoundCard(_middayRound);
+    renderMiddayHistory(allRounds);
+    _middayLoaded = true;
+  } catch(e) {
+    loader.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;font-size:0.85rem;">โหลดข้อมูลไม่สำเร็จ: ' + e.message + '</div>';
+    return;
+  }
+
+  loader.style.display = 'none';
+  main.style.display   = 'block';
+}
+
+async function refreshMiddayTab() {
+  _middayLoaded = false;
+  await loadMiddayTab();
+}
+
+function renderMiddayRoundCard(round) {
+  var el = document.getElementById('midday-round-card');
+  if (!el) return;
+
+  if (!round) {
+    el.innerHTML = `
+      <div class="round-card-header">
+        <div>
+          <div style="font-size:0.72rem;font-weight:800;color:#94a3b8;text-transform:uppercase;margin-bottom:4px;">รอบเช็คยอด</div>
+          <div style="font-size:1rem;font-weight:900;color:#0a4d2e;">ยังไม่มีรอบที่เปิดอยู่</div>
+        </div>
+        <span class="round-badge closed">ปิดอยู่</span>
+      </div>
+      <div style="padding:20px;text-align:center;color:#94a3b8;">
+        <div style="font-size:2.5rem;margin-bottom:10px;">📋</div>
+        <div style="font-size:0.85rem;font-weight:600;">รอแอดมินเปิดรอบเช็คยอด</div>
+        <div style="font-size:0.75rem;margin-top:6px;">ระบบจะแจ้งเตือนเมื่อเปิดรอบใหม่</div>
+        <button onclick="refreshMiddayTab()" style="margin-top:14px;border:1.5px solid #e2e8f0;background:white;border-radius:12px;padding:8px 20px;font-size:0.8rem;font-weight:700;color:#64748b;cursor:pointer;">🔄 รีเฟรช</button>
+      </div>
+    `;
+    return;
+  }
+
+  // Check if student already checked this round
+  getMyMiddayCheck(round.id, _currentUser.uid).then(function(myCheck) {
+    if (myCheck) {
+      renderAlreadyChecked(round, myCheck);
+    } else {
+      renderCheckForm(round);
+    }
+  });
+}
+
+function renderAlreadyChecked(round, myCheck) {
+  var el = document.getElementById('midday-round-card');
+  if (!el) return;
+  var statusLabels = { present: 'อยู่ในแถว', mission: 'ปฏิบัติภารกิจ', absent: 'ไม่สามารถรายงานตัวได้' };
+  var statusIcons  = { present: '✓', mission: '◷', absent: '!' };
+  var st = myCheck.status || 'present';
+  el.innerHTML = `
+    <div class="round-card-header">
+      <div>
+        <div style="font-size:0.72rem;font-weight:800;color:#94a3b8;text-transform:uppercase;margin-bottom:4px;">รอบที่ ${round.roundNumber}</div>
+        <div style="font-size:1rem;font-weight:900;color:#0a4d2e;">เช็คยอดสำเร็จแล้ว</div>
+        <div style="font-size:0.75rem;color:#64748b;margin-top:2px;">${round.createdAt ? 'เปิด ' + formatTime(round.createdAt) : ''}</div>
+      </div>
+      <span class="round-badge done">✓ เช็คแล้ว</span>
+    </div>
+    <div style="padding:18px;">
+      <div style="display:flex;align-items:center;gap:12px;background:#f0faf4;border:1px solid #a7f3d0;border-radius:14px;padding:14px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:#d1fae5;display:grid;place-items:center;font-size:1.1rem;font-weight:900;color:#059669;">${statusIcons[st]}</div>
+        <div>
+          <div style="font-size:0.9rem;font-weight:800;color:#0a4d2e;">${statusLabels[st] || st}</div>
+          <div style="font-size:0.75rem;color:#64748b;margin-top:2px;">บันทึกเวลา ${formatTime(myCheck.timestamp)}</div>
+          ${myCheck.detail ? '<div style="font-size:0.75rem;color:#159a61;margin-top:4px;">📝 ' + escapeHtml(myCheck.detail) + '</div>' : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCheckForm(round) {
+  var el = document.getElementById('midday-round-card');
+  if (!el) return;
+  var openTime = round.createdAt ? formatTime(round.createdAt) : '--';
+  var closedTime = round.closedAt ? formatTime(round.closedAt) : 'ยังเปิดอยู่';
+  el.innerHTML = `
+    <div class="round-card-header">
+      <div>
+        <div style="font-size:0.72rem;font-weight:800;color:#94a3b8;text-transform:uppercase;margin-bottom:4px;">รอบที่ ${round.roundNumber} · เปิด ${openTime}</div>
+        <div style="font-size:1rem;font-weight:900;color:#0a4d2e;">รายงานตัวเช็คยอด</div>
+      </div>
+      <span class="round-badge open">🟡 เปิดอยู่</span>
+    </div>
+    <div style="padding:16px;" id="midday-form-area">
+      <div style="font-size:0.8rem;font-weight:800;color:#0a4d2e;margin-bottom:10px;">เลือกสถานะของคุณ</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+        <button class="midday-choice" id="mc-present" onclick="selectMiddayStatus('present')">
+          <span class="ch-icon">✓</span>
+          <span class="ch-label">อยู่ในแถว</span>
+          <span class="ch-sub">พร้อมปฏิบัติ</span>
+        </button>
+        <button class="midday-choice" id="mc-mission" onclick="selectMiddayStatus('mission')">
+          <span class="ch-icon">◷</span>
+          <span class="ch-label">ปฏิบัติภารกิจ</span>
+          <span class="ch-sub">ระบุสถานที่</span>
+        </button>
+        <button class="midday-choice" id="mc-absent" onclick="selectMiddayStatus('absent')">
+          <span class="ch-icon">!</span>
+          <span class="ch-label">ไม่สามารถ</span>
+          <span class="ch-sub">ระบุเหตุผล</span>
+        </button>
+      </div>
+      <div id="midday-detail-wrap" style="display:none;margin-bottom:12px;">
+        <label style="font-size:0.75rem;font-weight:800;color:#64748b;display:block;margin-bottom:6px;" id="midday-detail-label">รายละเอียด</label>
+        <textarea id="midday-detail-input" rows="2" placeholder="ระบุสถานที่ หรือเหตุผล..."
+          style="width:100%;border-radius:12px;border:1.5px solid #e2e8f0;padding:10px 14px;font-size:0.85rem;resize:none;box-sizing:border-box;"></textarea>
+      </div>
+      <div id="midday-cam-area" style="display:none;margin-bottom:12px;">
+        <div style="font-size:0.75rem;font-weight:800;color:#159a61;margin-bottom:8px;">📷 สแกนใบหน้าเพื่อยืนยัน</div>
+        <div class="camera-wrap" style="max-height:200px;" id="midday-cam-wrap">
+          <video id="midday-video" playsinline muted autoplay></video>
+          <canvas id="midday-canvas"></canvas>
+          <div class="face-frame"></div>
+          <div class="cam-overlay-badge" id="midday-cam-badge">รอตรวจสอบ...</div>
+        </div>
+        <div style="margin-top:8px;" id="midday-conf-wrap" style="display:none;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-size:0.68rem;font-weight:700;color:#94a3b8;text-transform:uppercase;">ความมั่นใจ</span>
+            <span style="font-size:0.72rem;font-weight:800;color:#0a4d2e;" id="midday-conf-pct">0%</span>
+          </div>
+          <div class="conf-bar-wrap">
+            <div class="conf-bar-fill" id="midday-conf-bar" style="width:0%;background:#10b981;"></div>
+          </div>
+        </div>
+      </div>
+      <button id="midday-submit-btn" disabled onclick="submitMiddayForm('${round.id}')" class="confirm-btn checkin-mode" style="margin-top:4px;">
+        <span id="midday-submit-icon">✋</span>
+        <span id="midday-submit-text">เลือกสถานะก่อน</span>
+      </button>
+    </div>
+  `;
+}
+
+function selectMiddayStatus(status) {
+  _middayStatus = status;
+  ['present','mission','absent'].forEach(function(s) {
+    var btn = document.getElementById('mc-' + s);
+    if (btn) btn.classList.remove('selected');
+  });
+  var selected = document.getElementById('mc-' + status);
+  if (selected) selected.classList.add('selected');
+
+  // Detail input
+  var wrap = document.getElementById('midday-detail-wrap');
+  var label = document.getElementById('midday-detail-label');
+  var needDetail = status === 'mission' || status === 'absent';
+  if (wrap) {
+    wrap.style.display = needDetail ? 'block' : 'none';
+    if (label) label.textContent = status === 'mission' ? 'สถานที่ปฏิบัติภารกิจ' : 'เหตุผล';
+  }
+
+  // Start camera
+  startMiddayCamera();
+  updateMiddaySubmitBtn();
+}
+
+async function startMiddayCamera() {
+  var camArea = document.getElementById('midday-cam-area');
+  if (!camArea) return;
+  camArea.style.display = 'block';
+
+  if (_middayCamStream) return; // already running
+
+  try {
+    var video = document.getElementById('midday-video');
+    var canvas = document.getElementById('midday-canvas');
+    var badge = document.getElementById('midday-cam-badge');
+
+    if (badge) badge.textContent = 'โหลด AI...';
+    await loadFaceModels();
+
+    _middayCamStream = await startCamera(video);
+
+    startDetectionLoop(video, canvas, function(count) {
+      // draw loop
+    });
+
+    _middayVerifyInterval = setInterval(async function() {
+      if (!_currentUser || !_currentUser.faceDescriptor) return;
+      try {
+        var result = await verifyFace(video, _currentUser.faceDescriptor);
+        _middayFaceVerified = result.verified;
+        var pct = result.confidence;
+
+        var confWrap = document.getElementById('midday-conf-wrap');
+        if (confWrap) confWrap.style.display = 'block';
+        var pctEl = document.getElementById('midday-conf-pct');
+        var barEl = document.getElementById('midday-conf-bar');
+        if (pctEl) pctEl.textContent = pct + '%';
+        if (barEl) { barEl.style.width = pct + '%'; barEl.style.background = pct >= 60 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#ef4444'; }
+
+        if (badge) {
+          badge.className = 'cam-overlay-badge' + (result.verified ? ' ok' : ' err');
+          badge.textContent = result.verified ? '✓ ยืนยันแล้ว' : '✗ ไม่ผ่าน';
+        }
+        updateMiddaySubmitBtn();
+      } catch(e) {}
+    }, 2000);
+  } catch(e) {
+    showToastBar('ไม่สามารถเปิดกล้องได้', true);
+  }
+}
+
+function updateMiddaySubmitBtn() {
+  var btn  = document.getElementById('midday-submit-btn');
+  var icon = document.getElementById('midday-submit-icon');
+  var text = document.getElementById('midday-submit-text');
+  if (!btn) return;
+  var canSubmit = !!_middayStatus && _middayFaceVerified;
+  btn.disabled = !canSubmit;
+  if (!_middayStatus) { icon.textContent = '✋'; text.textContent = 'เลือกสถานะก่อน'; }
+  else if (!_middayFaceVerified) { icon.textContent = '⏳'; text.textContent = 'รอยืนยันใบหน้า...'; }
+  else { icon.textContent = '✅'; text.textContent = 'ยืนยันการเช็คยอด'; }
+}
+
+async function submitMiddayForm(roundId) {
+  if (!_middayStatus || !_middayFaceVerified) return;
+  var btn = document.getElementById('midday-submit-btn');
+  var icon = document.getElementById('midday-submit-icon');
+  var text = document.getElementById('midday-submit-text');
+  btn.disabled = true;
+  icon.textContent = '⏳';
+  text.textContent = 'กำลังบันทึก...';
+
+  stopDetectionLoop();
+  if (_middayVerifyInterval) clearInterval(_middayVerifyInterval);
+  stopCamera(document.getElementById('midday-video'));
+  _middayCamStream = null;
+
+  var detail = (document.getElementById('midday-detail-input') || {}).value || '';
+
+  try {
+    await submitMiddayCheck(roundId, _currentUser.uid, _currentUser, _middayStatus, detail.trim(), _middayFaceVerified);
+    showToastBar('✅ บันทึกเช็คยอดสำเร็จ!', false);
+
+    // Reset state
+    _middayStatus = null;
+    _middayFaceVerified = false;
+    _middayLoaded = false;
+
+    // Add midday tab badge for done
+    document.getElementById('tab-midday-badge').classList.remove('hidden');
+    document.getElementById('tab-midday-badge').textContent = '✓';
+    document.getElementById('tab-midday-badge').style.background = '#10b981';
+
+    await loadMiddayTab();
+  } catch(e) {
+    showToastBar('เกิดข้อผิดพลาด: ' + e.message, true);
+    btn.disabled = false;
+    icon.textContent = '✅';
+    text.textContent = 'ยืนยันการเช็คยอด';
+  }
+}
+
+async function renderMiddayHistory(rounds) {
+  var el = document.getElementById('midday-history-list');
+  if (!el) return;
+  if (!rounds || !rounds.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:0.82rem;">ยังไม่มีรอบเช็คยอดวันนี้</div>';
+    return;
+  }
+  var items = await Promise.all(rounds.map(async function(r) {
+    var myCheck = await getMyMiddayCheck(r.id, _currentUser.uid).catch(() => null);
+    return { round: r, check: myCheck };
+  }));
+
+  var statusLabels = { present: 'อยู่ในแถว', mission: 'ปฏิบัติภารกิจ', absent: 'ไม่รายงานตัว' };
+  el.innerHTML = items.map(function(item) {
+    var r = item.round; var c = item.check;
+    var checked = !!c;
+    var iconClass = checked ? 'h-icon-round' : (r.open ? 'h-icon-out' : 'h-icon-miss');
+    var iconText  = checked ? '✓' : (r.open ? '⏳' : '✗');
+    var statusTxt = checked ? (statusLabels[c.status] || c.status) : (r.open ? 'กำลังเปิดรับรายงาน' : 'ไม่ได้รายงานตัว');
+    var timeTxt   = checked ? formatTime(c.timestamp) : (r.createdAt ? formatTime(r.createdAt) : '--');
+    return `<div class="history-item">
+      <div class="history-icon ${iconClass}">${iconText}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:0.82rem;font-weight:800;color:#0a4d2e;">รอบที่ ${r.roundNumber}</span>
+          ${r.open ? '<span style="font-size:0.65rem;font-weight:700;background:#fef3c7;color:#d97706;border:1px solid #fde68a;border-radius:20px;padding:2px 8px;">กำลังเปิด</span>' : ''}
+        </div>
+        <div style="font-size:0.75rem;color:#94a3b8;margin-top:2px;">${statusTxt} · ${timeTxt}</div>
+      </div>
+      ${checked ? '<div style="font-size:1rem;">✅</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  TAB 3: ประวัติการลงเวลาเรียนทั้งหมด
+// ═══════════════════════════════════════════════════════
+
+var _historyLoaded = false;
+
+async function loadHistoryTab(force = false) {
+  if (_historyLoaded && !force) return;
+  var loader = document.getElementById('history-loader');
+  var main   = document.getElementById('history-main');
+  if (loader) loader.style.display = 'flex';
+  if (main) main.style.display = 'none';
+
+  try {
+    // 1. Get minSessions rule from Settings
+    var minSessions = 10;
+    try {
+      var rulesSnap = await db.collection(COLLECTIONS.SETTINGS).doc('attendance-rules').get();
+      if (rulesSnap.exists && rulesSnap.data().minSessions) {
+        minSessions = parseInt(rulesSnap.data().minSessions) || 10;
+      }
+    } catch(e) {}
+
+    var reqEl = document.getElementById('req-sessions-count');
+    if (reqEl) reqEl.textContent = minSessions;
+
+    // 2. Query attendance records for current user
+    var records = [];
+    try {
+      var cgSnap = await db.collectionGroup('records').where('uid', '==', _currentUser.uid).get();
+      records = cgSnap.docs.map(d => d.data()).filter(r => r && r.date);
+    } catch(e) {
+      var rawHist = await getStudentHistory(_currentUser.uid, 60);
+      records = rawHist.filter(r => r && (r.checkInTime || r.checkOutTime || r.status === 'present'));
+    }
+
+    // Sort by date ascending to assign sequence numbers (ครั้งที่ 1, 2, 3...)
+    records.sort(function(a, b) {
+      return (a.date || '').localeCompare(b.date || '');
+    });
+
+    var validCount = 0;
+    var listWithSeq = [];
+    var seq = 0;
+
+    records.forEach(function(r) {
+      var isValid = (r.status === 'present' || r.status === 'late' || !!r.checkInTime);
+      if (isValid) {
+        seq++;
+        validCount++;
+        listWithSeq.push(Object.assign({}, r, { seq: seq, isValid: true }));
+      } else {
+        listWithSeq.push(Object.assign({}, r, { seq: '-', isValid: false }));
+      }
+    });
+
+    // Display descending by date (most recent first, e.g. #10, #9, #8...)
+    listWithSeq.sort(function(a, b) {
+      return (b.date || '').localeCompare(a.date || '');
+    });
+
+    var tbody = document.getElementById('history-table-body');
+    if (!listWithSeq.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#94a3b8;">ยังไม่มีประวัติการลงเวลาเรียน</td></tr>';
+    } else {
+      tbody.innerHTML = listWithSeq.map(function(r) {
+        var dateDisplay = formatDateThai(r.date);
+        var inTime = r.checkInTime ? formatTimeSec(r.checkInTime) : '--:--:--';
+        var outTime = r.checkOutTime ? formatTimeSec(r.checkOutTime) : '--:--:--';
+
+        var statusBadge = '';
+        if (r.status === 'absent') {
+          statusBadge = '<span style="background:#fee2e2; color:#ef4444; padding:3px 10px; border-radius:12px; font-weight:800; font-size:0.75rem;">ขาดเรียน</span>';
+        } else if (r.status === 'leave') {
+          statusBadge = '<span style="background:#fef3c7; color:#d97706; padding:3px 10px; border-radius:12px; font-weight:800; font-size:0.75rem;">ลากิจ/ป่วย</span>';
+        } else if (r.checkInTime && r.checkOutTime) {
+          statusBadge = '<span style="background:#d1fae5; color:#059669; padding:3px 10px; border-radius:12px; font-weight:800; font-size:0.75rem;">สมบูรณ์</span>';
+        } else if (r.checkInTime) {
+          statusBadge = '<span style="background:#e0f2fe; color:#0284c7; padding:3px 10px; border-radius:12px; font-weight:800; font-size:0.75rem;">เช็คเข้าแล้ว</span>';
+        } else {
+          statusBadge = '<span style="background:#f1f5f9; color:#64748b; padding:3px 10px; border-radius:8px; font-weight:700; font-size:0.75rem;">-</span>';
+        }
+
+        return `
+          <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:12px 14px; text-align:center; font-weight:800; color:#0a4d2e;">${r.seq}</td>
+            <td style="padding:12px 14px; font-weight:700; color:#1e293b;">${dateDisplay}</td>
+            <td style="padding:12px 14px; font-family:monospace; font-weight:700; color:#0e7e4f;">${inTime}</td>
+            <td style="padding:12px 14px; font-family:monospace; font-weight:700; color:#d97706;">${outTime}</td>
+            <td style="padding:12px 14px; text-align:center;">${statusBadge}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Update Progress UI
+    var pct = Math.min(100, Math.round((validCount / minSessions) * 100));
+    var progTxt = document.getElementById('history-progress-text');
+    var progBar = document.getElementById('history-progress-bar');
+    if (progTxt) progTxt.textContent = validCount + ' / ' + minSessions + ' ครั้ง';
+    if (progBar) progBar.style.width = pct + '%';
+
+    var passBadge = document.getElementById('history-pass-badge');
+    if (passBadge) {
+      if (validCount >= minSessions) {
+        passBadge.style.background = '#d1fae5';
+        passBadge.style.color = '#059669';
+        passBadge.innerHTML = '✅ ผ่านเกณฑ์ (' + validCount + '/' + minSessions + ' ครั้ง)';
+      } else {
+        passBadge.style.background = '#fef3c7';
+        passBadge.style.color = '#b45309';
+        passBadge.innerHTML = '⚠️ ยังไม่ผ่านเกณฑ์ (' + validCount + '/' + minSessions + ' ครั้ง)';
+      }
+    }
+
+    _historyLoaded = true;
+  } catch(e) {
+    console.error('History tab error:', e);
+  }
+
+  if (loader) loader.style.display = 'none';
+  if (main) main.style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════════
+//  TAB 3: ขอลากิจ / ลาป่วย
+// ═══════════════════════════════════════════════════════
+
+function setLeaveTypeSelect(type) {
+  document.getElementById('leave-type-val').value = type;
+  var btnP = document.getElementById('type-btn-personal');
+  var btnS = document.getElementById('type-btn-sick');
+  if (btnP && btnS) {
+    btnP.classList.toggle('active', type === 'personal');
+    btnP.style.borderColor = type === 'personal' ? '#159a61' : '#e2e8f0';
+    btnS.classList.toggle('active', type === 'sick');
+    btnS.style.borderColor = type === 'sick' ? '#159a61' : '#e2e8f0';
+  }
+}
+
+function calcLeaveDays() {
+  var start = document.getElementById('leave-start-date').value;
+  var end = document.getElementById('leave-end-date').value;
+  var info = document.getElementById('leave-days-info');
+  var txt = document.getElementById('leave-days-count-text');
+  if (!start || !end) { if (info) info.style.display = 'none'; return; }
+  var days = daysBetween(start, end);
+  if (isNaN(days) || days <= 0) {
+    if (info) info.style.display = 'none';
+    return;
+  }
+  if (txt) txt.textContent = 'รวมระยะเวลาการลา ' + days + ' วัน';
+  if (info) info.style.display = 'flex';
+}
+
+async function handleLeaveFormSubmit(e) {
+  e.preventDefault();
+  var btn = document.getElementById('submit-leave-btn');
+  var type = document.getElementById('leave-type-val').value;
+  var startDate = document.getElementById('leave-start-date').value;
+  var endDate = document.getElementById('leave-end-date').value;
+  var reason = document.getElementById('leave-reason-text').value.trim();
+  var fileInput = document.getElementById('leave-evidence-file');
+  var file = fileInput && fileInput.files ? fileInput.files[0] : null;
+
+  if (!startDate || !endDate || !reason) {
+    showToastBar('กรุณากรอกข้อมูลการลาให้ครบถ้วน', true);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span> กำลังส่งคำร้อง...';
+
+  try {
+    var formData = { type: type, startDate: startDate, endDate: endDate, reason: reason };
+    await submitLeaveRequest(_currentUser.uid, _currentUser, formData, file);
+
+    showToastBar('✅ ส่งคำร้องขอลาสำเร็จแล้ว', false);
+    document.getElementById('student-leave-form').reset();
+    var info = document.getElementById('leave-days-info');
+    if (info) info.style.display = 'none';
+    setLeaveTypeSelect('personal');
+    loadLeaveTab();
+  } catch(err) {
+    showToastBar('เกิดข้อผิดพลาด: ' + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>📤</span> ส่งคำร้องขอลากิจ / ลาป่วย';
+  }
+}
+
+async function loadLeaveTab() {
+  var el = document.getElementById('my-leave-history-list');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8; font-size:0.85rem;">กำลังโหลด...</div>';
+  try {
+    var leaves = await getLeaveRequests({ uid: _currentUser.uid });
+    if (!leaves || !leaves.length) {
+      el.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8; font-size:0.85rem;">ยังไม่มีประวัติการขอลา</div>';
+      return;
+    }
+
+    var statusBadges = {
+      pending: '<span style="background:#fef3c7; color:#d97706; border-radius:12px; padding:3px 8px; font-weight:800; font-size:0.72rem;">⏳ รอพิจารณา</span>',
+      approved: '<span style="background:#d1fae5; color:#059669; border-radius:12px; padding:3px 8px; font-weight:800; font-size:0.72rem;">✅ อนุมัติ</span>',
+      rejected: '<span style="background:#fee2e2; color:#ef4444; border-radius:12px; padding:3px 8px; font-weight:800; font-size:0.72rem;">❌ ไม่อนุมัติ</span>',
+      cancelled: '<span style="background:#f1f5f9; color:#64748b; border-radius:12px; padding:3px 8px; font-weight:800; font-size:0.72rem;">🚫 ยกเลิก</span>'
+    };
+
+    window._studentLeavesMap = {};
+    leaves.forEach(function(l) { window._studentLeavesMap[l.id] = l; });
+
+    el.innerHTML = leaves.map(function(l) {
+      var typeTxt = l.type === 'sick' ? '🏥 ลาป่วย' : '📋 ลากิจ';
+      var dateTxt = formatDateShort(l.startDate) + (l.startDate !== l.endDate ? ' - ' + formatDateShort(l.endDate) : '');
+      var statusHtml = statusBadges[l.status] || l.status;
+      var evidenceBtn = l.evidenceUrl 
+        ? `<button onclick="previewStudentLeaveEvidence('${l.id}')" style="margin-top:6px; background:#e0f2fe; color:#0284c7; border:none; border-radius:8px; padding:4px 10px; font-size:0.72rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">📎 ดูรูปหลักฐานที่แนบ</button>` 
+        : '';
+
+      return `
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:12px 14px; margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-size:0.85rem; font-weight:800; color:#0a4d2e;">${typeTxt} (${l.days || 1} วัน)</span>
+            ${statusHtml}
+          </div>
+          <div style="font-size:0.78rem; font-weight:700; color:#475569;">🗓️ ${dateTxt}</div>
+          <div style="font-size:0.75rem; color:#64748b; margin-top:2px;">เหตุผล: ${escapeHtml(l.reason || '-')}</div>
+          ${l.approverNote ? '<div style="font-size:0.72rem; color:#ef4444; margin-top:4px; font-weight:700;">ข้อความจากผู้บังคับบัญชา: ' + escapeHtml(l.approverNote) + '</div>' : ''}
+          ${evidenceBtn}
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444; font-size:0.85rem;">เกิดข้อผิดพลาด: ' + e.message + '</div>';
+  }
+}
+
+function previewStudentLeaveEvidence(leaveId) {
+  var l = window._studentLeavesMap ? window._studentLeavesMap[leaveId] : null;
+  if (!l || !l.evidenceUrl) return;
+  var url = l.evidenceUrl;
+  if (url.startsWith('data:image/') || url.match(/\.(jpeg|jpg|png|webp|gif)($|\?)/i)) {
+    if (typeof window.Swal !== 'undefined') {
+      Swal.fire({
+        title: '📎 รูปภาพหลักฐานการลา',
+        imageUrl: url,
+        imageAlt: 'หลักฐานการลา',
+        confirmButtonText: 'ปิดหน้าต่าง',
+        confirmButtonColor: '#159a61'
+      });
+    } else {
+      var win = window.open();
+      if (win) win.document.write('<img src="' + url + '" style="max-width:100%;height:auto;display:block;margin:20px auto;"/>');
+    }
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เช็คยอดระหว่างวัน | ระบบเช็คชื่อ นศท.</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/tailwind-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<style>
+  .primary-action { border-color: #159a61 !important; background-color: #e5f1ea !important; box-shadow: 0 4px 12px rgba(21,154,97,0.1) !important; }
+  .dot-red { background: #ef4444; }
+  .dot-yellow { background: #eab308; }
+  .dot-green { background: #10b981; }
+</style>
+</head>
+<body class="bg-[#f6faf8] text-[#17382a] font-sans">
+  <div id="sidebackdrop" class="fixed inset-0 z-30 hidden bg-slate-900/25 backdrop-blur-[1px]" onclick="toggleSidebar()"></div>
+  
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-[17.25rem] flex-col border-r border-emerald-950/5 bg-white px-4 py-5 transition-transform duration-250 lg:translate-x-0 -translate-x-full">
+    <div class="mb-8 flex items-center gap-3 px-2">
+      <img src="https://mstc23.rta.mi.th/amc23/img/23png.png" alt="Logo" class="h-10 w-10 object-contain rounded-xl drop-shadow-md">
+      <div>
+        <p class="text-[1.05rem] font-bold tracking-tight text-forest-900">รด. Check</p>
+        <p class="text-[.68rem] font-medium text-slate-400">ศูนย์เช็คเวลาเรียน</p>
+      </div>
+    </div>
+    <nav id="sidebar-nav" class="space-y-1"></nav>
+    <div class="mt-auto rounded-2xl bg-forest-50 p-3.5 mb-3 hidden" id="sidebar-user-card">
+       <div class="flex items-center gap-2 text-[.72rem] font-bold text-forest-700">
+         <div class="grid h-7 w-7 place-items-center rounded-lg bg-forest-100 text-[.62rem] font-black text-forest-700" id="sidebar-avatar">?</div>
+         <div>
+            <div id="sidebar-name" class="truncate w-[140px]">--</div>
+            <div id="sidebar-role" class="text-[0.65rem] text-forest-600/80">--</div>
+         </div>
+       </div>
+    </div>
+    <button class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:text-red-500" onclick="logout()">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 00-2-2h-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> ออกจากระบบ
+    </button>
+  </aside>
+
+  <main class="min-h-screen lg:ml-[17.25rem]">
+    <header class="sticky top-0 z-20 flex h-[4.7rem] items-center justify-between border-b border-emerald-950/5 bg-[#f6faf8]/90 px-4 backdrop-blur-md sm:px-7 lg:px-9">
+      <div class="flex items-center gap-3">
+        <button class="icon-btn lg:hidden" id="menu-btn" aria-label="เปิดเมนู">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div>
+          <p class="text-base font-bold text-forest-900 sm:text-lg">เช็คยอดระหว่างวัน</p>
+          <p id="date-top" class="hidden text-xs text-slate-400 sm:block">--</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <a href="dashboard.html" class="hidden sm:flex text-xs font-bold text-forest-600 hover:underline mr-2">← กลับหน้าหลัก</a>
+        <div id="topbar-user" class="relative"></div>
+      </div>
+    </header>
+    
+    <div class="mx-auto max-w-[1440px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8" id="page-body">
+      
+      <!-- Student View -->
+      <div id="student-view" class="hidden section active">
+        <div class="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div>
+            <p class="mb-1 text-sm font-bold text-forest-600">รายงานตัวระหว่างวัน</p>
+            <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">เช็คยอดกำลังพล</h1>
+            <p class="mt-2 text-sm text-slate-500">บันทึกสถานะตามรอบที่หัวหน้าหมวดเปิดให้รายงานตัว</p>
+          </div>
+          <span class="w-fit rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500" id="round-status-badge">⏳ รอตรวจสอบรอบ</span>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-[1.25fr_.75fr]">
+          
+          <div class="card p-5 sm:p-6" id="round-card">
+            
+            <div id="no-round-alert" class="hidden flex items-center gap-3 p-4 bg-slate-50 text-slate-500 rounded-xl mb-4">
+              <span class="text-xl">ℹ️</span> <span>ยังไม่มีการเช็คยอดในขณะนี้ รอหัวหน้าหมวดเปิดรอบเช็คยอด</span>
+            </div>
+
+            <div id="active-round-info" class="hidden border-b border-emerald-950/5 pb-5 mb-5 flex justify-between items-center">
+              <div>
+                <h2 class="text-lg font-bold text-forest-900">รอบที่ <span id="round-num">-</span></h2>
+                <p class="mt-1 text-sm text-slate-500" id="round-time">--</p>
+              </div>
+            </div>
+
+            <div id="already-checked-round" class="hidden">
+              <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-5 flex items-start gap-4">
+                <span class="text-2xl">✅</span>
+                <div>
+                  <h3 class="font-bold text-forest-900">เช็คยอดสำเร็จ</h3>
+                  <p class="text-sm text-slate-500 mt-1" id="my-check-time">--</p>
+                  <p class="text-xs text-forest-700 font-medium mt-2 bg-emerald-100/50 px-2.5 py-1.5 rounded-lg inline-block" id="my-check-detail"></p>
+                </div>
+              </div>
+            </div>
+
+            <div id="check-form" class="hidden">
+              <p class="mb-3 text-sm font-bold text-forest-900">เลือกสถานะของคุณ</p>
+              <div class="grid gap-3 sm:grid-cols-3">
+                <button class="midday-choice rounded-xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:border-emerald-300" id="btn-present" onclick="selectStatus('present')">
+                  <span class="mb-2 block text-lg">✓</span>
+                  <span class="block text-sm font-bold text-forest-900">อยู่ในแถว</span>
+                  <span class="mt-1 block text-xs text-slate-400">พร้อมปฏิบัติหน้าที่</span>
+                </button>
+                <button class="midday-choice rounded-xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:border-emerald-300" id="btn-mission" onclick="selectStatus('mission')">
+                  <span class="mb-2 block text-lg">◷</span>
+                  <span class="block text-sm font-bold text-forest-900">ปฏิบัติภารกิจ</span>
+                  <span class="mt-1 block text-xs text-slate-400">ระบุสถานที่</span>
+                </button>
+                <button class="midday-choice rounded-xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:border-emerald-300" id="btn-absent" onclick="selectStatus('absent')">
+                  <span class="mb-2 block text-lg">!</span>
+                  <span class="block text-sm font-bold text-forest-900">ไม่สามารถรายงาน</span>
+                  <span class="mt-1 block text-xs text-slate-400">ระบุเหตุผล</span>
+                </button>
+              </div>
+              
+              <div id="detail-input" class="mt-4 hidden">
+                <label class="mb-1.5 block text-xs font-bold text-slate-600" id="detail-label">รายละเอียด</label>
+                <textarea id="detail-text" class="w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm" placeholder="ระบุสถานที่ / เหตุผล..." rows="2"></textarea>
+              </div>
+
+              <!-- Camera Area -->
+              <div id="midday-camera-section" class="mt-5 hidden border-t border-slate-100 pt-5">
+                <p class="text-sm font-bold text-forest-900 mb-3">📷 กรุณาสแกนใบหน้าเพื่อยืนยันตัวตน</p>
+                <div class="relative mx-auto h-[220px] w-full max-w-[300px] overflow-hidden rounded-2xl bg-slate-900 shadow-inner" id="camera-wrap">
+                  <video class="camera-video absolute inset-0 w-full h-full object-cover" id="camera-video" playsinline muted></video>
+                  <canvas class="camera-canvas absolute inset-0 w-full h-full object-cover pointer-events-none z-10" id="camera-canvas"></canvas>
+                  <div class="face-frame absolute inset-0 z-20 pointer-events-none" id="face-frame"></div>
+                  <div class="scan-line absolute inset-0 z-20 hidden pointer-events-none" id="scan-line"></div>
+                  
+                  <div class="absolute bottom-3 right-3 rounded-lg bg-black/50 backdrop-blur-sm px-2.5 py-1.5 text-[.65rem] font-bold text-white z-30" id="cam-status">
+                     กำลังตรวจสอบ...
+                  </div>
+                </div>
+                
+                <div class="mt-4 max-w-[300px] mx-auto hidden" id="confidence-wrap">
+                  <div class="flex justify-between items-center mb-1.5">
+                    <span class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">ความมั่นใจ Face AI</span>
+                    <span class="text-[0.65rem] font-bold text-forest-900" id="conf-pct">0%</span>
+                  </div>
+                  <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                     <div class="h-full bg-emerald-500 transition-all duration-200" id="conf-bar" style="width:0%"></div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="mt-5 w-full rounded-xl bg-forest-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-forest-700 disabled:opacity-50 disabled:cursor-not-allowed" id="submit-check-btn" disabled onclick="submitCheck()">
+                ยืนยันการเช็คยอด
+              </button>
+            </div>
+          </div>
+          
+          <div class="card p-5 sm:p-6">
+            <h2 class="font-bold text-forest-900">รอบเช็คยอดวันนี้</h2>
+            <div id="my-rounds-history" class="mt-5 space-y-1">
+              <div class="text-center text-sm text-slate-400 py-4">กำลังโหลดประวัติ...</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Commander View -->
+      <div id="commander-view" class="hidden section active">
+        <div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div>
+            <p class="mb-1 text-sm font-bold text-forest-600">จัดการรอบเช็คยอด</p>
+            <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">ตรวจเช็คยอดระหว่างวัน</h1>
+            <p class="mt-2 text-sm text-slate-500" id="cmd-date">--</p>
+          </div>
+          <button class="rounded-xl bg-forest-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700" id="new-round-btn" onclick="openNewRound()">
+            + เปิดรอบเช็คยอดใหม่
+          </button>
+        </div>
+
+        <div id="rounds-list" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="flex items-center justify-center p-8 text-slate-400 col-span-full">
+            <svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="toast" class="toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-xl bg-forest-900 px-4 py-3 text-sm font-bold text-white shadow-xl">
+    <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-400 text-[.65rem] text-forest-900">✓</span>
+    <span id="toastText">ดำเนินการสำเร็จ</span>
+  </div>
+
+  <!-- New Round Modal -->
+  <div class="fixed inset-0 z-50 hidden place-items-center bg-slate-950/45 p-4 backdrop-blur-sm" id="new-round-modal">
+    <div class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div>
+          <h2 class="font-bold text-forest-900">เปิดรอบเช็คยอดใหม่</h2>
+        </div>
+        <button class="icon-btn !h-8 !w-8" onclick="closeModal('new-round-modal')">×</button>
+      </div>
+      <div class="p-5">
+        <p class="text-sm text-slate-500 mb-4">ระบบจะแจ้งเตือน นศท. ทุกคนในหมวดให้เริ่มรายงานตัวเช็คยอด</p>
+        <div class="mb-6">
+          <label class="mb-1.5 block text-xs font-bold text-slate-600">รอบที่</label>
+          <input type="number" id="round-number-input" value="1" min="1" max="10" class="w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm font-bold text-forest-900">
+        </div>
+        <div class="flex gap-3">
+          <button class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-50" onclick="closeModal('new-round-modal')">ยกเลิก</button>
+          <button class="flex-1 rounded-xl bg-forest-600 py-2.5 text-sm font-bold text-white transition hover:bg-forest-700" onclick="createNewRound()">ยืนยันเปิดรอบ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Round Detail Modal -->
+  <div class="fixed inset-0 z-50 hidden place-items-center bg-slate-950/45 p-4 backdrop-blur-sm" id="detail-round-modal">
+    <div class="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col max-h-[88vh]">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 bg-emerald-50/50">
+        <div>
+          <h2 class="font-extrabold text-forest-900 text-lg" id="detail-modal-title">รายละเอียดการเช็คยอด รอบที่ --</h2>
+          <p class="text-xs text-slate-500 mt-0.5" id="detail-modal-subtitle">ข้อมูลการรายงานตัวของ นศท. รายบุคคล</p>
+        </div>
+        <button class="icon-btn !h-8 !w-8" onclick="closeModal('detail-round-modal')">×</button>
+      </div>
+
+      <!-- Quick Summary Badges in Modal Header -->
+      <div class="grid grid-cols-4 gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50/50 text-center" id="detail-modal-stats">
+        <div class="bg-white p-2 rounded-xl border border-slate-200/80">
+          <div class="text-[0.65rem] text-slate-400 font-bold uppercase">รายงานตัว</div>
+          <div class="text-base font-black text-forest-900" id="dm-stat-total">0</div>
+        </div>
+        <div class="bg-emerald-50/70 p-2 rounded-xl border border-emerald-100">
+          <div class="text-[0.65rem] text-emerald-600 font-bold uppercase">อยู่ในแถว</div>
+          <div class="text-base font-black text-emerald-800" id="dm-stat-present">0</div>
+        </div>
+        <div class="bg-amber-50/70 p-2 rounded-xl border border-amber-100">
+          <div class="text-[0.65rem] text-amber-600 font-bold uppercase">ภารกิจ</div>
+          <div class="text-base font-black text-amber-800" id="dm-stat-mission">0</div>
+        </div>
+        <div class="bg-rose-50/70 p-2 rounded-xl border border-rose-100">
+          <div class="text-[0.65rem] text-rose-600 font-bold uppercase">ไม่อยู่/ขาด</div>
+          <div class="text-base font-black text-rose-800" id="dm-stat-absent">0</div>
+        </div>
+      </div>
+
+      <!-- Tab Bar -->
+      <div class="flex border-b border-slate-100 bg-white px-4 gap-1 pt-1" id="detail-tab-bar">
+        <button onclick="switchDetailTab('all')" id="tab-all" class="detail-tab px-4 py-2.5 text-xs font-bold text-forest-700 border-b-2 border-forest-600 -mb-px">
+          📋 ทั้งหมด
+        </button>
+        <button onclick="switchDetailTab('platoon')" id="tab-platoon" class="detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition">
+          🏢 แยกตามหมวด
+        </button>
+        <button onclick="switchDetailTab('company')" id="tab-company" class="detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition">
+          🎓 แยกตามชั้นปี
+        </button>
+      </div>
+
+      <!-- Filter / Search bar in Modal -->
+      <div class="p-3 border-b border-slate-100 flex flex-wrap gap-2" id="detail-filter-bar">
+        <input type="text" id="detail-search-input" placeholder="🔍 ค้นหาชื่อ / รหัส นศท..." oninput="filterDetailRecords()" class="flex-1 min-w-[140px] rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold outline-none focus:border-forest-600">
+        <select id="detail-status-filter" onchange="filterDetailRecords()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-forest-900 outline-none">
+          <option value="">ทุกสถานะ</option>
+          <option value="present">🟢 อยู่ในแถว</option>
+          <option value="mission">🟡 ปฏิบัติภารกิจ</option>
+          <option value="absent">🔴 ไม่อยู่/ขาด</option>
+        </select>
+        <select id="detail-platoon-filter" onchange="filterDetailRecords()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-forest-900 outline-none">
+          <option value="">ทุกหมวด</option>
+        </select>
+        <select id="detail-year-filter" onchange="filterDetailRecords()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-forest-900 outline-none">
+          <option value="">ทุกชั้นปี</option>
+        </select>
+      </div>
+
+      <!-- Grouped Cards View -->
+      <div class="p-4 overflow-y-auto flex-1 hidden" id="group-view-container"></div>
+
+      <!-- Records Table / List -->
+      <div class="p-4 overflow-y-auto flex-1" id="detail-modal-list">
+        <div class="text-center py-8 text-slate-400">กำลังโหลด...</div>
+      </div>
+
+      <div class="border-t border-slate-100 p-3 bg-slate-50 flex items-center justify-between">
+        <span class="text-xs text-slate-400 font-semibold" id="detail-record-count"></span>
+        <button class="rounded-xl bg-forest-600 px-5 py-2 text-xs font-bold text-white hover:bg-forest-700 transition" onclick="closeModal('detail-round-modal')">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js?v=2"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/midday.js"></script>
+  <script src="js/face-recognition.js"></script>
+  <script>
+  var currentUser = null;
+  var selectedStatus = null;
+  var currentRound   = null;
+
+  document.getElementById('date-top').textContent =
+    new Date().toLocaleDateString('th-TH',{weekday:'short',month:'short',day:'numeric'});
+
+  auth.onAuthStateChanged(async user => {
+    if (!user) { window.location.href='index.html'; return; }
+    var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+    if (!snap.exists) { auth.signOut(); window.location.href='index.html'; return; }
+    currentUser = { uid: user.uid, ...snap.data() };
+    
+    renderSidebar(currentUser);
+    renderTopbarUser(currentUser);
+    initSidebar();
+    
+    document.getElementById('sidebar-name').textContent = currentUser.name || currentUser.studentId;
+    document.getElementById('sidebar-role').textContent = ROLE_NAMES[currentUser.role];
+    document.getElementById('sidebar-user-card').classList.remove('hidden');
+
+    if (currentUser.role === ROLES.STUDENT) {
+      document.getElementById('student-view').classList.remove('hidden');
+      initStudentView();
+    } else {
+      document.getElementById('commander-view').classList.remove('hidden');
+      document.getElementById('cmd-date').textContent = formatDateThai(today());
+      loadCommanderView();
+    }
+  });
+
+  // ─── Student View ─────────────────────────────────────────
+  async function initStudentView() {
+    try {
+      currentRound = await getLatestOpenRound();
+      if (!currentRound) {
+        document.getElementById('no-round-alert').classList.remove('hidden');
+        document.getElementById('active-round-info').classList.add('hidden');
+        document.getElementById('round-status-badge').className = 'w-fit rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500';
+        document.getElementById('round-status-badge').textContent = 'ยังไม่มีรอบเช็คยอด';
+      } else {
+        document.getElementById('no-round-alert').classList.add('hidden');
+        document.getElementById('active-round-info').classList.remove('hidden');
+        document.getElementById('round-num').textContent  = currentRound.roundNumber;
+        document.getElementById('round-time').textContent = 'เปิดเมื่อ ' + (currentRound.createdAt ? formatTime(currentRound.createdAt) : '--');
+
+        var myCheck = await getMyMiddayCheck(currentRound.id, currentUser.uid);
+        if (myCheck) {
+          document.getElementById('check-form').classList.add('hidden');
+          document.getElementById('already-checked-round').classList.remove('hidden');
+          document.getElementById('round-status-badge').className = 'w-fit rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700';
+          document.getElementById('round-status-badge').textContent = 'รอบที่ ' + currentRound.roundNumber + ' (เช็คแล้ว)';
+          document.getElementById('my-check-time').textContent = formatTime(myCheck.timestamp);
+          document.getElementById('my-check-detail').textContent = myCheck.detail ? 'รายละเอียด: ' + myCheck.detail : '';
+          if(!myCheck.detail) document.getElementById('my-check-detail').classList.add('hidden');
+        } else {
+          document.getElementById('check-form').classList.remove('hidden');
+          document.getElementById('already-checked-round').classList.add('hidden');
+          document.getElementById('round-status-badge').className = 'w-fit rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700';
+          document.getElementById('round-status-badge').textContent = 'รอบที่ ' + currentRound.roundNumber + ' (รอรายงานตัว)';
+          document.getElementById('submit-check-btn').disabled = true;
+        }
+      }
+    } catch(e) {
+      document.getElementById('no-round-alert').classList.remove('hidden');
+      document.getElementById('no-round-alert').innerHTML = `<span class="text-xl">⚠️</span><span>โหลดข้อมูลไม่สำเร็จ: ${e.message}</span>`;
+    }
+    loadMyRoundsHistory();
+  }
+
+
+  var cameraStream   = null;
+  var faceVerified   = false;
+  var verifyInterval = null;
+
+  async function startMiddayCamera() {
+    var camSection = document.getElementById('midday-camera-section');
+    if (!camSection) return;
+    camSection.classList.remove('hidden');
+    document.getElementById('confidence-wrap').classList.remove('hidden');
+
+    if (cameraStream) return;
+
+    try {
+      var st = document.getElementById('cam-status');
+      st.textContent = 'โหลด Face AI...';
+      st.className = 'absolute bottom-3 right-3 rounded-lg bg-black/50 backdrop-blur-sm px-2.5 py-1.5 text-[.65rem] font-bold text-white z-30';
+
+      await loadFaceModels();
+
+      st.textContent = 'กำลังเปิดกล้อง...';
+      var video = document.getElementById('camera-video');
+      var canvas = document.getElementById('camera-canvas');
+      cameraStream = await startCamera(video);
+
+      startDetectionLoop(video, canvas, count => {
+        if (count === 0) { st.textContent='ไม่พบใบหน้า'; st.className='absolute bottom-3 right-3 rounded-lg bg-red-500/80 backdrop-blur-sm px-2.5 py-1.5 text-[.65rem] font-bold text-white z-30'; }
+        else if (count === 1) { st.textContent='พบใบหน้า 1 คน'; st.className='absolute bottom-3 right-3 rounded-lg bg-black/50 backdrop-blur-sm px-2.5 py-1.5 text-[.65rem] font-bold text-white z-30'; }
+        else { st.textContent=`พบ ${count} ใบหน้า`; st.className='absolute bottom-3 right-3 rounded-lg bg-red-500/80 backdrop-blur-sm px-2.5 py-1.5 text-[.65rem] font-bold text-white z-30'; }
+      });
+
+      verifyInterval = setInterval(autoVerifyMidday, 2000);
+    } catch(e) {
+      showToast('ไม่สามารถเปิดกล้องได้: ' + e.message, 'error');
+    }
+  }
+
+  async function autoVerifyMidday() {
+    if (!currentUser || !currentUser.faceDescriptor) return;
+    var video = document.getElementById('camera-video');
+    try {
+      var result = await verifyFace(video, currentUser.faceDescriptor);
+      faceVerified = result.verified;
+      
+      document.getElementById('conf-pct').textContent = result.confidence + '%';
+      document.getElementById('conf-bar').style.width  = result.confidence + '%';
+      document.getElementById('conf-bar').style.background =
+        result.confidence >= 60 ? '#10b981' :
+        result.confidence >= 40 ? '#f59e0b' :
+                                  '#ef4444';
+
+      var st = document.getElementById('cam-status');
+      if (result.verified) {
+        st.textContent = 'ยืนยันสำเร็จ ✓';
+        st.className = 'absolute bottom-3 right-3 rounded-lg bg-emerald-500/80 backdrop-blur-sm px-2.5 py-1.5 text-[.65rem] font-bold text-white z-30';
+      } else {
+        st.textContent = '❌ ' + result.msg;
+        st.className = 'absolute bottom-3 right-3 rounded-lg bg-red-500/80 backdrop-blur-sm px-2.5 py-1.5 text-[.65rem] font-bold text-white z-30';
+      }
+      updateMiddaySubmitButton();
+    } catch(e) {}
+  }
+
+  function updateMiddaySubmitButton() {
+    var btn = document.getElementById('submit-check-btn');
+    btn.disabled = !(selectedStatus && faceVerified);
+    if(selectedStatus && faceVerified) {
+      btn.innerHTML = 'ยืนยันการเช็คยอด';
+    } else if (selectedStatus) {
+      btn.innerHTML = 'รอยืนยันใบหน้า...';
+    } else {
+      btn.innerHTML = 'เลือกสถานะก่อน';
+    }
+  }
+
+  function selectStatus(status) {
+    selectedStatus = status;
+    ['present','mission','absent'].forEach(s => {
+      document.getElementById('btn-'+s)?.classList.remove('primary-action');
+    });
+    document.getElementById('btn-'+status)?.classList.add('primary-action');
+
+    var needsDetail = status === 'mission' || status === 'absent';
+    document.getElementById('detail-input').classList.toggle('hidden', !needsDetail);
+    document.getElementById('detail-label').textContent = status === 'mission' ? 'สถานที่ปฏิบัติภารกิจ' : 'เหตุผล';
+    
+    startMiddayCamera();
+    updateMiddaySubmitButton();
+  }
+
+  async function submitCheck() {
+    if (!selectedStatus || !currentRound || !faceVerified) return;
+    var btn    = document.getElementById('submit-check-btn');
+    var detail = document.getElementById('detail-text')?.value.trim() || '';
+    showLoading(btn, 'กำลังบันทึก...');
+
+    stopDetectionLoop();
+    if (verifyInterval) clearInterval(verifyInterval);
+    var video = document.getElementById('camera-video');
+    stopCamera(video);
+    cameraStream = null;
+
+    try {
+      await submitMiddayCheck(currentRound.id, currentUser.uid, currentUser, selectedStatus, detail, faceVerified);
+      showToast('บันทึกสำเร็จ');
+      
+      document.getElementById('midday-camera-section').classList.add('hidden');
+      faceVerified = false;
+      selectedStatus = null;
+      
+      initStudentView();
+    } catch(e) {
+      showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+      hideLoading(btn);
+      startMiddayCamera();
+    }
+  }
+
+  async function loadMyRoundsHistory() {
+    var el = document.getElementById('my-rounds-history');
+    try {
+      var rounds = await getTodayRounds();
+      if (!rounds.length) { el.innerHTML = `<div class="text-center text-sm text-slate-400 py-4">ยังไม่มีประวัติการเช็คยอดวันนี้</div>`; return; }
+      var items = await Promise.all(rounds.map(async r => {
+        var myRec = await getMyMiddayCheck(r.id, currentUser.uid);
+        return { ...r, myRecord: myRec };
+      }));
+      
+      el.innerHTML = items.map(r => {
+        const isChecked = !!r.myRecord;
+        const icon = isChecked ? '✓' : '❌';
+        const colorClass = isChecked ? 'bg-emerald-600 text-white' : 'bg-rose-100 text-rose-500';
+        const bgClass = isChecked ? 'bg-emerald-50' : (r.open ? 'border border-amber-100' : 'bg-slate-50 opacity-70');
+        const statusText = isChecked ? ({present:'อยู่ในแถว',mission:'ปฏิบัติภารกิจ',absent:'ไม่อยู่'})[r.myRecord.status] : (r.open ? 'กำลังเปิดรับรายงานตัว' : 'ไม่ได้รายงานตัว');
+        const statusClass = isChecked ? 'text-forest-900 font-bold' : 'text-slate-500';
+        const badge = r.open ? `<span class="text-[0.65rem] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">กำลังเปิด</span>` : '';
+        const timeDetail = r.myRecord ? ` · ${formatTime(r.myRecord.timestamp)}` : '';
+        
+        return `
+          <div class="flex items-center gap-3 rounded-xl p-3 ${bgClass} mb-2">
+            <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full ${colorClass} text-xs font-bold">${icon}</span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-bold text-forest-900">รอบที่ ${r.roundNumber}</p>
+                ${badge}
+              </div>
+              <p class="text-xs truncate ${statusClass}">${statusText}${timeDetail}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch(e) {}
+  }
+
+  // ─── Commander View ───────────────────────────────────────
+  async function loadCommanderView() {
+    var el = document.getElementById('rounds-list');
+    el.innerHTML = `<div class="flex items-center justify-center p-8 text-slate-400 col-span-full"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>`;
+    try {
+      var rounds = await getTodayRounds();
+      if (!rounds.length) {
+        el.innerHTML = `
+          <div class="col-span-full card p-8 text-center">
+            <div class="text-4xl mb-3 opacity-50">🔔</div>
+            <p class="text-forest-900 font-bold text-lg">ยังไม่มีรอบเช็คยอด</p>
+            <p class="text-slate-500 text-sm mt-1">กด "+ เปิดรอบเช็คยอดใหม่" เพื่อเริ่ม</p>
+          </div>`;
+        return;
+      }
+
+      // Calculate live records and stats for each round
+      var roundsWithStats = await Promise.all(rounds.map(async r => {
+        var recs = await getRoundRecords(r.id).catch(() => []);
+        var stats = {
+          total: recs.length,
+          present: recs.filter(rec => rec.status === 'present').length,
+          mission: recs.filter(rec => rec.status === 'mission').length,
+          absent: recs.filter(rec => rec.status === 'absent').length
+        };
+        return { ...r, liveStats: stats };
+      }));
+
+      el.innerHTML = roundsWithStats.map(r => `
+        <div class="card p-5 relative overflow-hidden flex flex-col justify-between">
+          ${r.open ? '<div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>' : '<div class="absolute top-0 left-0 w-1.5 h-full bg-slate-300"></div>'}
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <div>
+                <h3 class="font-black text-forest-900 text-lg">รอบที่ ${r.roundNumber}</h3>
+                <p class="text-xs text-slate-400 font-semibold mt-0.5">${formatTime(r.createdAt)}</p>
+              </div>
+              <span class="px-2.5 py-1 text-[0.65rem] font-extrabold rounded-full ${r.open ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}">
+                ${r.open ? '⏳ กำลังเปิด' : '🔒 ปิดแล้ว'}
+              </span>
+            </div>
+            <div class="space-y-2 mt-4 text-xs font-semibold">
+              <div class="flex justify-between border-b border-slate-100 pb-1.5"><span class="text-slate-500">ยอดรายงานตัว</span><span class="font-extrabold text-emerald-700 text-sm">${r.liveStats.total} คน</span></div>
+              <div class="flex justify-between border-b border-slate-100 pb-1.5"><span class="text-slate-500">🟢 อยู่ในแถว</span><span class="font-bold text-forest-900">${r.liveStats.present} คน</span></div>
+              <div class="flex justify-between border-b border-slate-100 pb-1.5"><span class="text-slate-500">🟡 ปฏิบัติภารกิจ</span><span class="font-bold text-amber-700">${r.liveStats.mission} คน</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">🔴 ไม่อยู่ / ขาด</span><span class="font-bold text-rose-600">${r.liveStats.absent} คน</span></div>
+            </div>
+          </div>
+          <div class="mt-5 pt-4 border-t border-slate-100 flex gap-2">
+            ${r.open 
+              ? `<button class="flex-1 text-xs font-bold text-rose-600 hover:text-rose-700 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 transition border border-rose-200/60" onclick="closeRound('${r.id}')">ปิดรอบนี้</button>` 
+              : ''
+            }
+            <button class="flex-1 text-xs font-bold text-forest-700 hover:text-forest-900 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition border border-emerald-200/60 flex items-center justify-center gap-1" onclick="viewRoundDetail('${r.id}')">📋 รายละเอียด</button>
+          </div>
+        </div>
+      `).join('');
+    } catch(e) {
+      el.innerHTML = `<div class="col-span-full p-4 text-rose-500 text-sm font-bold">เกิดข้อผิดพลาด: ${e.message}</div>`;
+    }
+  }
+
+  function openNewRound() {
+    document.getElementById('new-round-modal').classList.remove('hidden');
+    document.getElementById('new-round-modal').classList.add('grid');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+    document.getElementById(id).classList.remove('grid');
+  }
+
+  async function createNewRound() {
+    var num = document.getElementById('round-number-input').value;
+    if (!num) return;
+    try {
+      await createRound(currentUser ? currentUser.uid : '', num);
+      showToast('เปิดรอบเช็คยอดสำเร็จ');
+      closeModal('new-round-modal');
+      loadCommanderView();
+    } catch(e) {
+      showToast('เปิดรอบไม่สำเร็จ: ' + e.message, 'error');
+    }
+  }
+
+  async function closeRound(roundId) {
+    var confirmed = await showConfirmPopup(
+      'ปิดรอบเช็คยอดระหว่างวัน?',
+      'เมื่อปิดรอบแล้ว นศท. จะไม่สามารถรายงานตัวในรอบนี้ได้อีก',
+      'ปิดรอบเช็คยอด',
+      'ยกเลิก',
+      'warning'
+    );
+    if (!confirmed) return;
+    try {
+      await db.collection(COLLECTIONS.MIDDAY)
+              .doc(today())
+              .collection('rounds')
+              .doc(roundId)
+              .update({
+                open: false,
+                closedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                closedBy: currentUser ? currentUser.uid : ''
+              });
+      showToast('ปิดรอบเช็คยอดสำเร็จ', 'success');
+      loadCommanderView();
+    } catch(e) {
+      showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+    }
+  }
+
+  var _currentDetailRecords = [];
+  var _currentDetailTab = 'all';
+
+  async function viewRoundDetail(roundId) {
+    openModal('detail-round-modal');
+    var titleEl = document.getElementById('detail-modal-title');
+    var listEl  = document.getElementById('detail-modal-list');
+
+    titleEl.textContent = 'กำลังโหลดข้อมูล...';
+    listEl.innerHTML = `<div class="flex items-center justify-center p-8 text-slate-400"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>`;
+
+    // Reset tabs
+    _currentDetailTab = 'all';
+    document.getElementById('group-view-container').classList.add('hidden');
+    document.getElementById('detail-modal-list').classList.remove('hidden');
+    document.getElementById('detail-filter-bar').classList.remove('hidden');
+    ['all','platoon','company'].forEach(t => {
+      var btn = document.getElementById('tab-' + t);
+      if (t === 'all') {
+        btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-forest-700 border-b-2 border-forest-600 -mb-px';
+      } else {
+        btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition';
+      }
+    });
+
+    try {
+      var roundSnap = await db.collection(COLLECTIONS.MIDDAY).doc(today()).collection('rounds').doc(roundId).get();
+      var roundData = roundSnap.exists ? roundSnap.data() : null;
+      var roundNum  = roundData ? roundData.roundNumber : '';
+      titleEl.textContent = 'รายละเอียดการเช็คยอด รอบที่ ' + roundNum;
+
+      _currentDetailRecords = await getRoundRecords(roundId);
+
+      var presentCount = _currentDetailRecords.filter(r => r.status === 'present').length;
+      var missionCount = _currentDetailRecords.filter(r => r.status === 'mission').length;
+      var absentCount  = _currentDetailRecords.filter(r => r.status === 'absent').length;
+
+      document.getElementById('dm-stat-total').textContent   = _currentDetailRecords.length + ' คน';
+      document.getElementById('dm-stat-present').textContent = presentCount + ' คน';
+      document.getElementById('dm-stat-mission').textContent = missionCount + ' คน';
+      document.getElementById('dm-stat-absent').textContent  = absentCount + ' คน';
+
+      // Populate dynamic dropdowns
+      var platoons = [...new Set(_currentDetailRecords.map(r => r.platoon).filter(Boolean))].sort();
+      var years    = [...new Set(_currentDetailRecords.map(r => r.company).filter(Boolean))].sort();
+
+      var plSel = document.getElementById('detail-platoon-filter');
+      plSel.innerHTML = '<option value="">ทุกหมวด</option>' + platoons.map(p => `<option value="${p}">หมวด ${p}</option>`).join('');
+
+      var yrSel = document.getElementById('detail-year-filter');
+      yrSel.innerHTML = '<option value="">ทุกชั้นปี</option>' + years.map(y => `<option value="${y}">ชั้นปี ${y}</option>`).join('');
+
+      document.getElementById('detail-search-input').value  = '';
+      document.getElementById('detail-status-filter').value  = '';
+
+      if (currentUser.role === ROLES.PLATOON) {
+        if (currentUser.platoon) plSel.value = currentUser.platoon;
+        plSel.disabled = true;
+        if (currentUser.company) yrSel.value = currentUser.company;
+        yrSel.disabled = true;
+      } else if (currentUser.role === ROLES.COMPANY) {
+        plSel.value = '';
+        plSel.disabled = false;
+        if (currentUser.company) yrSel.value = currentUser.company;
+        yrSel.disabled = true;
+      } else {
+        plSel.value = '';
+        plSel.disabled = false;
+        yrSel.value = '';
+        yrSel.disabled = false;
+      }
+
+      renderDetailRecords(_currentDetailRecords);
+    } catch(e) {
+      listEl.innerHTML = `<div class="p-4 text-center text-rose-500 font-bold text-sm">เกิดข้อผิดพลาด: ${e.message}</div>`;
+    }
+  }
+
+  function switchDetailTab(tab) {
+    _currentDetailTab = tab;
+    ['all','platoon','company'].forEach(t => {
+      var btn = document.getElementById('tab-' + t);
+      if (t === tab) {
+        btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-forest-700 border-b-2 border-forest-600 -mb-px';
+      } else {
+        btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition';
+      }
+    });
+
+    var groupContainer = document.getElementById('group-view-container');
+    var listContainer  = document.getElementById('detail-modal-list');
+    var filterBar      = document.getElementById('detail-filter-bar');
+
+    if (tab === 'all') {
+      groupContainer.classList.add('hidden');
+      listContainer.classList.remove('hidden');
+      filterBar.classList.remove('hidden');
+      filterDetailRecords();
+    } else {
+      groupContainer.classList.remove('hidden');
+      listContainer.classList.add('hidden');
+      filterBar.classList.add('hidden');
+      renderGroupedView(_currentDetailRecords, tab);
+    }
+  }
+
+  function renderGroupedView(records, groupBy) {
+    var container = document.getElementById('group-view-container');
+    var groupLabel = groupBy === 'platoon' ? 'หมวด' : 'ชั้นปี';
+    var groupKey   = groupBy === 'platoon' ? 'platoon' : 'company';
+
+    // Build groups
+    var groups = {};
+    records.forEach(r => {
+      var key = r[groupKey] || 'ไม่ระบุ';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(r);
+    });
+
+    var sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'th'));
+
+    if (!sortedKeys.length) {
+      container.innerHTML = `<div class="text-center py-8 text-slate-400 font-bold text-sm">ไม่มีข้อมูล</div>`;
+      return;
+    }
+
+    container.innerHTML = sortedKeys.map(key => {
+      var grp       = groups[key];
+      var present   = grp.filter(r => r.status === 'present').length;
+      var mission   = grp.filter(r => r.status === 'mission').length;
+      var absent    = grp.filter(r => r.status === 'absent').length;
+      var total     = grp.length;
+      var missionPeople = grp.filter(r => r.status === 'mission' && r.detail);
+      var absentPeople  = grp.filter(r => r.status === 'absent' && r.detail);
+
+      var nameRows = grp.map((r, i) => {
+        var stColor = r.status === 'present' ? 'text-emerald-700' : r.status === 'mission' ? 'text-amber-700' : 'text-rose-600';
+        var stIcon  = r.status === 'present' ? '🟢' : r.status === 'mission' ? '🟡' : '🔴';
+        var stLabel = r.status === 'present' ? 'อยู่ในแถว' : r.status === 'mission' ? 'ปฏิบัติภารกิจ' : 'ไม่อยู่/ขาด';
+        var detailPart = r.detail
+          ? `<span class="ml-1 text-[0.63rem] font-semibold px-1.5 py-0.5 rounded ${ r.status === 'mission' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-rose-50 text-rose-600 border border-rose-200' }">${r.detail}</span>`
+          : '';
+        var faceTag = r.faceVerified ? '<span class="text-[0.6rem] text-emerald-500 ml-1 font-bold">✓AI</span>' : '';
+        return `
+          <div class="flex items-center gap-2.5 py-2 border-b border-slate-50 last:border-0">
+            <span class="text-slate-400 text-[0.65rem] font-bold w-5 text-center">${i+1}</span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1 flex-wrap">
+                <span class="text-xs font-bold text-forest-900">${r.name || r.studentId || '--'}${faceTag}</span>
+                <span class="text-[0.6rem] text-slate-400 font-mono">${r.studentId || ''}</span>
+              </div>
+              <div class="flex items-center gap-1 mt-0.5 flex-wrap">
+                <span class="${stColor} text-[0.65rem] font-bold">${stIcon} ${stLabel}</span>
+                ${detailPart}
+              </div>
+            </div>
+            <span class="text-[0.65rem] text-slate-400 font-semibold shrink-0">${r.timestamp ? formatTime(r.timestamp) : '--'}</span>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="mb-4 rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
+          <!-- Group Header -->
+          <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="text-base font-extrabold text-forest-900">${groupLabel} ${key}</span>
+              <span class="text-[0.65rem] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">รายงานตัว ${total} คน</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[0.65rem] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full px-2 py-0.5">🟢 ${present}</span>
+              <span class="text-[0.65rem] font-extrabold bg-amber-50 text-amber-700 border border-amber-100 rounded-full px-2 py-0.5">🟡 ${mission}</span>
+              <span class="text-[0.65rem] font-extrabold bg-rose-50 text-rose-600 border border-rose-100 rounded-full px-2 py-0.5">🔴 ${absent}</span>
+            </div>
+          </div>
+          <!-- Name List -->
+          <div class="px-4 py-1">
+            ${nameRows}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function filterDetailRecords() {
+    var q   = (document.getElementById('detail-search-input')?.value || '').toLowerCase().trim();
+    var st  = document.getElementById('detail-status-filter')?.value  || '';
+    var pl  = document.getElementById('detail-platoon-filter')?.value || '';
+    var yr  = document.getElementById('detail-year-filter')?.value    || '';
+
+    var filtered = _currentDetailRecords.filter(r => {
+      var matchQ  = !q  || (r.name||'').toLowerCase().includes(q) || (r.studentId||'').toLowerCase().includes(q);
+      var matchSt = !st || r.status === st;
+      var matchPl = !pl || String(r.platoon||'') === pl;
+      var matchYr = !yr || String(r.company||'') === yr;
+      return matchQ && matchSt && matchPl && matchYr;
+    });
+
+    document.getElementById('detail-record-count').textContent = filtered.length + ' คน';
+    renderDetailRecords(filtered);
+  }
+
+  function renderDetailRecords(records) {
+    var listEl = document.getElementById('detail-modal-list');
+    if (!records.length) {
+      listEl.innerHTML = `<div class="text-center py-8 text-slate-400 font-bold text-sm">ไม่พบข้อมูลการรายงานตัว</div>`;
+      return;
+    }
+
+    document.getElementById('detail-record-count').textContent = records.length + ' คน';
+
+    // Sort: present → mission → absent
+    var sorted = [...records].sort((a, b) => {
+      var order = { present: 0, mission: 1, absent: 2 };
+      return (order[a.status] ?? 9) - (order[b.status] ?? 9);
+    });
+
+    listEl.innerHTML = `
+      <div class="space-y-2">
+        ${sorted.map((r, idx) => {
+          var faceTag  = r.faceVerified ? `<span class="text-[0.6rem] text-emerald-500 font-bold ml-1">✓ AI</span>` : '';
+          var timeStr  = r.timestamp ? formatTime(r.timestamp) : '--';
+          var stBg     = r.status === 'present' ? 'bg-emerald-50 border-emerald-100' : r.status === 'mission' ? 'bg-amber-50/60 border-amber-100' : 'bg-rose-50/60 border-rose-100';
+          var stBadge  = r.status === 'present'
+            ? `<span class="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2 py-1 text-[0.68rem] font-extrabold text-emerald-800">🟢 อยู่ในแถว</span>`
+            : r.status === 'mission'
+            ? `<span class="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-2 py-1 text-[0.68rem] font-extrabold text-amber-800">🟡 ปฏิบัติภารกิจ</span>`
+            : `<span class="inline-flex items-center gap-1 rounded-lg bg-rose-100 px-2 py-1 text-[0.68rem] font-extrabold text-rose-700">🔴 ไม่อยู่/ขาด</span>`;
+
+          // Destination / reason block
+          var destBlock = '';
+          if (r.detail && r.status === 'mission') {
+            destBlock = `<div class="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1 text-[0.7rem] font-semibold text-amber-800"><span>📍</span><span>${r.detail}</span></div>`;
+          } else if (r.detail && r.status === 'absent') {
+            destBlock = `<div class="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-rose-50 border border-rose-200 px-2.5 py-1 text-[0.7rem] font-semibold text-rose-700"><span>📝</span><span>${r.detail}</span></div>`;
+          }
+
+          return `
+            <div class="flex items-start gap-3 rounded-xl border ${stBg} p-3">
+              <span class="shrink-0 text-slate-300 text-xs font-bold mt-0.5 w-5 text-center">${idx + 1}</span>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <span class="text-xs font-extrabold text-forest-900">${r.name || r.studentId || '--'}${faceTag}</span>
+                    <span class="ml-1.5 text-[0.65rem] text-slate-400 font-mono">${r.studentId || ''}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    ${stBadge}
+                    <span class="text-[0.65rem] text-slate-400 font-semibold">${timeStr}</span>
+                  </div>
+                </div>
+                <div class="mt-1 text-[0.65rem] text-slate-400">ปีที่ ${r.company || '--'} · หมวด ${r.platoon || '--'}</div>
+                ${destBlock}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+  </script>
+</body>
+</html>

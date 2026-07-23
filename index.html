@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบเช็คชื่อ นศท. | เข้าสู่ระบบ</title>
+  <meta name="description" content="ระบบเช็คชื่อนักศึกษาวิชาทหารด้วย AI Face Recognition">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="https://mstc23.rta.mi.th/amc23/img/23png.png">
+  <!-- SweetAlert2 CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tailwind-config.js"></script>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+
+<body class="login-body flex items-center justify-center min-h-screen p-4 sm:p-6 select-none">
+  <!-- Dynamic Mesh & Grid Pattern Background -->
+  <div class="login-bg-mesh"></div>
+  <div class="login-grid-pattern"></div>
+
+  <!-- Main Glassmorphic Container -->
+  <div class="relative w-full max-w-[420px] login-card-glass rounded-[2rem] p-7 sm:p-9 animate-enter">
+
+    <!-- Emblem Badge with Glow -->
+    <div class="relative mx-auto w-20 h-20 mb-6 flex items-center justify-center">
+      <div class="absolute inset-0 bg-emerald-500/20 rounded-2xl blur-lg animate-pulse"></div>
+      <img src="https://mstc23.rta.mi.th/amc23/img/23png.png" alt="Logo"
+        class="h-16 w-16 object-contain rounded-2xl relative z-10 drop-shadow-md login-badge-glow">
+    </div>
+
+    <!-- Header -->
+    <div class="text-center mb-7">
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">รด. Check</h1>
+      <p class="text-xs font-bold text-emerald-700 mt-1 tracking-wide">ระบบเช็คเวลาเรียน · Face AI Attendance System</p>
+    </div>
+
+    <!-- Error Alert (Fallback inline alert) -->
+    <div id="error-alert"
+      class="hidden mb-5 rounded-2xl bg-rose-50 p-4 text-xs font-bold text-rose-600 border border-rose-200 flex gap-2.5 items-center">
+      <span class="text-base">⚠️</span>
+      <span id="error-msg"></span>
+    </div>
+
+    <div id="page-modal"
+      class="absolute inset-0 z-[50] hidden items-center justify-center bg-slate-950/30 p-4 rounded-[2rem]">
+      <div class="w-full max-w-[360px] rounded-[3rem] bg-white p-6 shadow-[0_35px_90px_rgba(0,0,0,0.24)]">
+        <div class="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-amber-100 text-3xl text-amber-700">
+          <span id="page-modal-icon">⚠️</span>
+        </div>
+        <h3 id="page-modal-title" class="text-center text-lg font-black text-slate-900"></h3>
+        <p id="page-modal-text" class="mt-2 text-center text-sm text-slate-600"></p>
+        <button id="page-modal-close"
+          class="mt-8 w-full rounded-[2rem] bg-emerald-600 px-4 py-3 text-sm font-bold text-white">ปิด</button>
+      </div>
+    </div>
+
+    <!-- Login Form -->
+    <form id="login-form" autocomplete="off" class="space-y-4">
+      <div>
+        <label class="mb-1.5 block text-xs font-bold text-slate-700 tracking-wide" for="student-id">
+          เลขประจำตัว นศท. / รหัสเจ้าหน้าที่
+        </label>
+        <div class="relative flex items-center">
+          <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none z-10" fill="none" stroke="currentColor"
+            viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0" />
+          </svg>
+          <input type="text" id="student-id"
+            class="w-full rounded-xl login-input py-3 pr-4 text-sm font-semibold tracking-wide"
+            style="padding-left: 3.25rem !important;"
+            placeholder="ระบุเลขประจำตัว หรือ รหัสเจ้าหน้าที่" required>
+        </div>
+      </div>
+
+      <div>
+        <label class="mb-1.5 block text-xs font-bold text-slate-700 tracking-wide" for="birthdate">
+          รหัสผ่าน (วันเกิด)
+        </label>
+        <div class="relative flex items-center">
+          <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none z-10" fill="none" stroke="currentColor"
+            viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <input type="text" id="birthdate"
+            class="w-full rounded-xl login-input py-3 pr-4 text-sm font-semibold tracking-wide"
+            style="padding-left: 3.25rem !important;"
+            placeholder="วว/ดด/ปปปป (เช่น 15/01/2005)" required>
+        </div>
+        <p class="text-[0.7rem] text-slate-500 mt-1.5 font-medium">ใช้วันเกิดของคุณเป็นรหัสผ่าน (ตัวอย่าง: 15/01/2005)</p>
+      </div>
+
+      <button type="submit" id="login-btn"
+        class="w-full rounded-xl login-btn-emerald px-5 py-3.5 text-sm font-bold text-white shadow-xl mt-3 flex justify-center items-center gap-2.5 active:scale-98">
+        <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+            d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+        </svg>
+        <span>เข้าสู่ระบบ</span>
+      </button>
+    </form>
+
+    <!-- Saved Accounts Grid -->
+    <div id="saved-accounts-section" class="hidden mt-6 pt-5 border-t border-slate-200/80 text-left animate-enter">
+      <h3 class="text-xs font-bold text-slate-500 mb-3 tracking-wide uppercase">เข้าสู่ระบบด้วยบัญชีที่บันทึกไว้</h3>
+      <div id="index-saved-accounts-list" class="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+        <!-- Render saved accounts here -->
+      </div>
+    </div>
+
+    <div class="text-center mt-7 pt-5 border-t border-slate-200/80">
+      <p class="text-[0.72rem] font-bold text-slate-500">ระบบเช็คเวลาเรียน นศท. · ปีการศึกษา 2569</p>
+      <p class="text-[0.68rem] text-slate-400 mt-0.5">หากพบปัญหากรุณาติดต่อผู้ดูแลระบบ</p>
+    </div>
+  </div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    // Redirect if already logged in — route by role
+    auth.onAuthStateChanged(async user => {
+      if (user) {
+        try {
+          var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+          if (snap.exists) {
+            var userData = snap.data();
+            var role = userData.role || 1;
+            // นศท. (role=1) → หน้าหลักนักศึกษา | อื่นๆ → dashboard
+            window.location.href = role === 1 ? 'student.html' : 'dashboard.html';
+          }
+        } catch (e) { }
+      }
+    });
+
+    document.getElementById('login-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      var studentId = document.getElementById('student-id').value.trim();
+      var birthdate = document.getElementById('birthdate').value;
+      var btn = document.getElementById('login-btn');
+
+      if (!studentId || !birthdate) {
+        showAlert('กรุณากรอกข้อมูลให้ครบ');
+        return;
+      }
+
+      showLoading(btn, 'กำลังเข้าสู่ระบบ...');
+      hideAlert();
+
+      try {
+        var cred = await login(studentId, birthdate);
+        // ดึง role เพื่อ redirect ถูก
+        var userSnap = await db.collection(COLLECTIONS.USERS).doc(cred.user.uid).get();
+        var userData = userSnap.exists ? userSnap.data() : {};
+        var userRole = userSnap.exists ? (userData.role || 1) : 1;
+        var userName = userSnap.exists ? (userData.name || 'ผู้ใช้งาน') : 'ผู้ใช้งาน';
+
+        // บันทึกบัญชีเข้าระบบ
+        if (typeof saveAccount !== 'undefined') {
+          saveAccount(studentId, birthdate, userName, userRole, cred.user.uid);
+        }
+
+        var targetPage = userRole === 1 ? 'student.html' : 'dashboard.html';
+
+        if (typeof window.Swal !== 'undefined') {
+          await Swal.fire({
+            icon: 'success',
+            title: 'เข้าสู่ระบบสำเร็จ',
+            text: 'กำลังนำท่านไปยังหน้าหลัก...',
+            timer: 1200,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false
+          });
+        } else {
+          showToast('เข้าสู่ระบบสำเร็จ', 'success');
+        }
+        window.location.href = targetPage;
+      } catch (err) {
+        var msg = 'รหัสประจำตัวหรือวันเกิดไม่ถูกต้อง';
+        if (err.code === 'auth/too-many-requests') msg = 'พยายามเข้าสู่ระบบมากเกินไป กรุณารอสักครู่';
+        if (err.code === 'auth/network-request-failed') msg = 'ไม่มีการเชื่อมต่ออินเทอร์เน็ต';
+        showAlert(msg);
+        hideLoading(btn);
+      }
+    });
+
+    // Render saved accounts list on login page
+    function initSavedAccountsOnLogin() {
+      if (typeof getSavedAccounts === 'undefined') return;
+      var accounts = getSavedAccounts();
+      var container = document.getElementById('index-saved-accounts-list');
+      var section = document.getElementById('saved-accounts-section');
+      if (!accounts.length || !container || !section) {
+        if (section) section.classList.add('hidden');
+        return;
+      }
+      
+      section.classList.remove('hidden');
+      container.innerHTML = '';
+      
+      accounts.forEach(function(a) {
+        var roleNames = { 1: "นักศึกษาวิชาทหาร", 2: "ผู้บังคับหมวด", 3: "ผู้บังคับกองร้อย", 4: "ผู้บังคับกองพัน", 5: "ผู้ดูแลระบบ", 6: "ผู้ดูแลระบบสูงสุด" };
+        var roleName = roleNames[a.role] || 'ผู้ใช้งาน';
+        
+        container.innerHTML += `
+          <div class="flex items-center justify-between p-3 rounded-xl border border-slate-200/60 bg-white/50 hover:bg-white hover:border-emerald-200/80 transition cursor-pointer select-none">
+            <div class="flex items-center gap-3 flex-1 min-w-0" onclick="loginWithSavedAccount('${a.studentId}', '${a.birthdate}')">
+              <div class="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-800 text-[10px] font-bold shrink-0">
+                ${initials ? initials(a.name || 'น ศ') : (a.name || 'น').charAt(0)}
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml ? escapeHtml(a.name || '-') : (a.name || '-')}</p>
+                <p class="text-[10px] text-slate-400 font-mono">${roleName} · ${escapeHtml ? escapeHtml(a.studentId) : a.studentId}</p>
+              </div>
+            </div>
+            <button onclick="deleteSavedAccountFromLogin('${a.studentId}'); event.stopPropagation();" class="h-7 w-7 rounded-lg border border-slate-100 bg-white/70 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-100 transition shrink-0" title="ลบบัญชี">
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        `;
+      });
+    }
+
+    // Call it
+    setTimeout(initSavedAccountsOnLogin, 250);
+
+    window.loginWithSavedAccount = async function(studentId, birthdate) {
+      var btn = document.getElementById('login-btn');
+      showLoading(btn, 'กำลังเข้าสู่ระบบ...');
+      hideAlert();
+      
+      try {
+        var cred = await login(studentId, birthdate);
+        var userSnap = await db.collection(COLLECTIONS.USERS).doc(cred.user.uid).get();
+        var userData = userSnap.data();
+        var userRole = userSnap.exists ? (userData.role || 1) : 1;
+        var userName = userSnap.exists ? (userData.name || 'ผู้ใช้งาน') : 'ผู้ใช้งาน';
+        
+        saveAccount(studentId, birthdate, userName, userRole, cred.user.uid);
+        
+        if (typeof window.Swal !== 'undefined') {
+          await Swal.fire({
+            icon: 'success',
+            title: 'เข้าสู่ระบบสำเร็จ',
+            text: 'กำลังนำท่านไปยังหน้าหลัก...',
+            timer: 1200,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false
+          });
+        }
+        window.location.href = userRole === 1 ? 'student.html' : 'dashboard.html';
+      } catch (err) {
+        var msg = 'การเข้าสู่ระบบอัตโนมัติล้มเหลว: รหัสไม่ถูกต้องหรือถูกลบ';
+        showAlert(msg);
+        hideLoading(btn);
+      }
+    };
+
+    window.deleteSavedAccountFromLogin = function(studentId) {
+      if (typeof removeAccount !== 'undefined') {
+        removeAccount(studentId);
+        initSavedAccountsOnLogin();
+      }
+    };
+
+    function showAlert(msg) {
+      const modal = document.getElementById('page-modal');
+      const title = document.getElementById('page-modal-title');
+      const text = document.getElementById('page-modal-text');
+      const icon = document.getElementById('page-modal-icon');
+      const close = document.getElementById('page-modal-close');
+
+      if (modal && title && text && icon && close) {
+        title.textContent = 'เข้าสู่ระบบไม่สำเร็จ';
+        text.textContent = msg;
+        icon.textContent = '⚠️';
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        close.onclick = () => {
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        };
+        return;
+      }
+
+      document.getElementById('error-alert').classList.remove('hidden');
+      document.getElementById('error-msg').textContent = msg;
+    }
+
+    function hideAlert() {
+      document.getElementById('error-alert').classList.add('hidden');
+    }
+
+    // Register SW
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => { });
+    }
+  </script>
+</body>
+
+</html>

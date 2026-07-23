@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบเช็คชื่อ นศท. | หน้าหลัก</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tailwind-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+</head>
+
+<body class="bg-[#f6faf8] text-[#17382a] font-sans">
+  <div id="sidebackdrop" class="fixed inset-0 z-30 hidden bg-slate-900/25 backdrop-blur-[1px]"
+    onclick="toggleSidebar()"></div>
+
+  <aside id="sidebar"
+    class="fixed inset-y-0 left-0 z-40 flex w-[17.25rem] flex-col border-r border-emerald-950/5 bg-white px-4 py-5 transition-transform duration-250 lg:translate-x-0 -translate-x-full">
+    <div class="mb-8 flex items-center gap-3 px-2">
+      <img src="https://mstc23.rta.mi.th/amc23/img/23png.png" alt="Logo"
+        class="h-10 w-10 object-contain rounded-xl drop-shadow-md">
+      <div>
+        <p class="text-[1.05rem] font-bold tracking-tight text-forest-900">รด. Check</p>
+        <p class="text-[.68rem] font-medium text-slate-400">ศูนย์เช็คเวลาเรียน</p>
+      </div>
+    </div>
+    <nav id="sidebar-nav" class="space-y-1"></nav>
+    <div class="mt-auto rounded-2xl bg-forest-50 p-3.5 mb-3 hidden" id="sidebar-user-card">
+      <div class="flex items-center gap-2 text-[.72rem] font-bold text-forest-700">
+        <div class="grid h-7 w-7 place-items-center rounded-lg bg-forest-100 text-[.62rem] font-black text-forest-700"
+          id="sidebar-avatar">?</div>
+        <div>
+          <div id="sidebar-name" class="truncate w-[140px]">--</div>
+          <div id="sidebar-role" class="text-[0.65rem] text-forest-600/80">--</div>
+        </div>
+      </div>
+    </div>
+    <button class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:text-red-500"
+      onclick="logout()">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 00-2-2h-6" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" />
+      </svg> ออกจากระบบ
+    </button>
+  </aside>
+
+  <main class="min-h-screen lg:ml-[17.25rem]">
+    <header
+      class="sticky top-0 z-20 flex h-[4.7rem] items-center justify-between border-b border-emerald-950/5 bg-[#f6faf8]/90 px-4 backdrop-blur-md sm:px-7 lg:px-9">
+      <div class="flex items-center gap-3">
+        <button class="icon-btn lg:hidden" id="menu-btn" aria-label="เปิดเมนู">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </button>
+        <div>
+          <p id="page-heading" class="text-base font-bold text-forest-900 sm:text-lg">ภาพรวมวันนี้</p>
+          <p id="date-display" class="hidden text-xs text-slate-400 sm:block">--</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <button class="icon-btn relative" aria-label="การแจ้งเตือน">
+          <svg class="h-[1.1rem] w-[1.1rem]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M18 8A6 6 0 006 8c0 7-3 7-3 9h18c0-2-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-red-500 ring-2 ring-white"></span>
+        </button>
+        <div id="topbar-user" class="relative"></div>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-[1440px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8" id="page-body">
+      <section id="dashboard" class="section active">
+        <!-- Loading State -->
+        <div id="loading-state" class="flex flex-col items-center justify-center min-h-[50vh] text-slate-400">
+          <svg class="h-8 w-8 animate-spin text-forest-600 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
+              stroke-width="2" stroke-linecap="round" />
+          </svg>
+          <p>กำลังโหลดข้อมูล...</p>
+        </div>
+
+        <!-- Content State -->
+        <div id="content-state" class="hidden">
+          <div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p id="greet-name" class="mb-1 text-sm font-bold text-forest-600">สวัสดี 👋</p>
+              <h1 id="dash-title" class="text-2xl font-extrabold tracking-tight text-forest-900 sm:text-3xl">
+                พร้อมสำหรับการฝึกวันนี้หรือยัง?</h1>
+              <p id="dash-subtitle" class="mt-2 text-sm text-slate-500">ตรวจสอบเวลาเรียนและสถานะของคุณได้จากหน้านี้</p>
+            </div>
+            <div
+              class="flex items-center gap-2 rounded-xl border border-emerald-100 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-500">
+              <span class="status-dot bg-emerald-500"></span> <span id="dash-location">พื้นที่ฝึก: สนามฝึก รด.
+                ขอนแก่น</span>
+            </div>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-5" id="stats-grid">
+            <div class="card p-5">
+              <div class="mb-4 flex items-start justify-between">
+                <div class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><svg
+                    class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M20 11a8.1 8.1 0 01-15.5 3M4 13a8.1 8.1 0 0115.5-3M14 14l-4-4m0 4l4-4" stroke-width="2"
+                      stroke-linecap="round" />
+                  </svg></div>
+              </div>
+              <p id="stat-1-val" class="text-2xl font-extrabold text-forest-900">-</p>
+              <p id="stat-1-lbl" class="mt-1 text-xs font-medium text-slate-400">อัตราการเข้าเรียน</p>
+            </div>
+            <div class="card p-5">
+              <div class="mb-4 flex items-start justify-between">
+                <div class="grid h-10 w-10 place-items-center rounded-xl bg-sky-50 text-sky-600"><svg class="h-5 w-5"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="8" stroke-width="2" />
+                    <path d="M12 8v4l3 2" stroke-width="2" stroke-linecap="round" />
+                  </svg></div>
+              </div>
+              <p id="stat-2-val" class="text-2xl font-extrabold text-forest-900">-</p>
+              <p id="stat-2-lbl" class="mt-1 text-xs font-medium text-slate-400">เข้าร่วมการฝึก</p>
+            </div>
+            <div class="card p-5">
+              <div class="mb-4 flex items-start justify-between">
+                <div class="grid h-10 w-10 place-items-center rounded-xl bg-amber-50 text-amber-600"><svg
+                    class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path
+                      d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.72 3h16.92a2 2 0 001.72-3L13.71 3.86a2 2 0 00-3.42 0z"
+                      stroke-width="1.8" stroke-linecap="round" />
+                  </svg></div>
+              </div>
+              <p id="stat-3-val" class="text-2xl font-extrabold text-forest-900">-</p>
+              <p id="stat-3-lbl" class="mt-1 text-xs font-medium text-slate-400">มาสายสะสม</p>
+            </div>
+            <div class="card p-5">
+              <div class="mb-4 flex items-start justify-between">
+                <div class="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-600"><svg
+                    class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M8 3v3m8-3v3M4 9h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"
+                      stroke-width="1.8" stroke-linecap="round" />
+                  </svg></div>
+              </div>
+              <p id="stat-4-val" class="text-2xl font-extrabold text-forest-900">-</p>
+              <p id="stat-4-lbl" class="mt-1 text-xs font-medium text-slate-400">ลาระหว่างภาคเรียน</p>
+            </div>
+          </div>
+
+          <!-- Student Content -->
+          <div id="student-content" class="hidden space-y-5">
+            <!-- Today Check-in Card Top Banner -->
+            <div class="card overflow-hidden border-2 border-forest-600/20 shadow-lg">
+              <div
+                class="bg-gradient-to-r from-forest-900 via-forest-800 to-forest-700 px-5 py-4 sm:px-6 flex items-center justify-between text-white">
+                <div class="flex items-center gap-3">
+                  <div class="grid h-10 w-10 place-items-center rounded-xl bg-white/15 backdrop-blur-md">
+                    <svg class="h-5 w-5 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M20 21a8 8 0 00-16 0M12 13a5 5 0 100-10 5 5 0 000 10z" stroke-width="2"
+                        stroke-linecap="round" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="font-bold text-base text-white">เช็คชื่อประจำวันนี้</h2>
+                    <p id="today-date" class="text-xs text-emerald-100/80">--</p>
+                  </div>
+                </div>
+                <span id="todayBadge"
+                  class="rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 px-3 py-1 text-xs font-bold">รอเช็คชื่อ</span>
+              </div>
+
+              <div class="p-5 sm:p-6 bg-white">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 class="text-lg font-extrabold text-forest-900">ยืนยันตัวตนก่อนเริ่มฝึก</h3>
+                    <p class="mt-1 text-sm text-slate-500 max-w-lg" id="today-desc">สแกนใบหน้าพร้อมตรวจสอบตำแหน่ง
+                      เพื่อบันทึกเวลาเข้าเรียนอย่างถูกต้อง</p>
+                  </div>
+                  <div class="flex flex-wrap gap-3 shrink-0">
+                    <a href="face-checkin.html" id="checkInButton"
+                      class="rounded-xl bg-forest-600 px-6 py-3.5 text-base font-extrabold text-white shadow-lg shadow-forest-600/30 transition hover:bg-forest-700 active:scale-95 text-center flex items-center justify-center gap-2">
+                      <span>📸</span> สแกนใบหน้าเช็คชื่อ
+                    </a>
+                    <a href="midday-check.html"
+                      class="rounded-xl border border-emerald-100 bg-forest-50 px-4 py-3.5 text-sm font-bold text-forest-700 transition hover:bg-forest-100 text-center flex items-center justify-center">
+                      เช็คยอดระหว่างวัน
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Profile & History Grid -->
+            <div class="grid gap-5 xl:grid-cols-[.8fr_1.2fr]">
+              <!-- Profile / Schedule -->
+              <div class="card p-5 sm:p-6">
+                <div class="mb-5 flex items-center justify-between">
+                  <div>
+                    <h2 class="font-bold text-forest-900">ข้อมูลกำลังพล</h2>
+                  </div>
+                </div>
+                <div class="space-y-3">
+                  <div class="flex justify-between border-b border-slate-50 pb-2"><span
+                      class="text-xs text-slate-500">รหัส นศท.</span><span class="text-sm font-bold text-forest-900"
+                      id="info-id">-</span></div>
+                  <div class="flex justify-between border-b border-slate-50 pb-2"><span
+                      class="text-xs text-slate-500">ชั้นปี/กองร้อย</span><span
+                      class="text-sm font-bold text-forest-900" id="info-company">-</span></div>
+                  <div class="flex justify-between border-b border-slate-50 pb-2"><span
+                      class="text-xs text-slate-500">สถานศึกษา</span><span class="text-sm font-bold text-forest-900"
+                      id="info-school">-</span></div>
+                </div>
+                <a href="leave-request.html"
+                  class="btn w-full rounded-xl border border-emerald-100 bg-white px-4 py-2.5 text-sm font-bold text-forest-700 transition hover:bg-forest-50 text-center mt-5 block">ส่งใบลาใหม่</a>
+              </div>
+
+              <!-- History Table -->
+              <div class="card overflow-hidden">
+                <div class="flex items-center justify-between border-b border-emerald-950/5 px-5 py-4 sm:px-6">
+                  <div>
+                    <h2 class="font-bold text-forest-900">ประวัติการเข้าเรียนล่าสุด</h2>
+                    <p class="mt-1 text-xs text-slate-400">รายการล่าสุด</p>
+                  </div>
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[500px] text-left">
+                    <thead class="bg-slate-50/80 text-[.68rem] font-bold uppercase tracking-wide text-slate-400">
+                      <tr>
+                        <th class="px-6 py-3">วันที่</th>
+                        <th class="px-4 py-3">เวลาเข้า</th>
+                        <th class="px-4 py-3">เวลาออก</th>
+                        <th class="px-4 py-3">สถานะ</th>
+                      </tr>
+                    </thead>
+                    <tbody class="text-sm" id="history-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Commander Content -->
+          <div id="commander-content" class="hidden">
+            <div class="mt-5 card overflow-hidden">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-emerald-950/5 px-5 py-4 sm:px-6 gap-3">
+                <div>
+                  <h2 class="font-bold text-forest-900" id="cmd-table-title">สรุปยอดกำลังพลประจำวัน</h2>
+                  <p class="mt-1 text-xs text-slate-400" id="cmd-date">--</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <!-- Date Picker for Past History -->
+                  <div class="flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-forest-900 shadow-xs">
+                    <span class="text-slate-400">📅</span>
+                    <input type="date" id="cmd-date-picker" onchange="onCommanderDateChange(this.value)" class="bg-transparent text-xs font-bold text-forest-900 outline-none cursor-pointer">
+                  </div>
+                  <!-- Platoon Type Filter for Commanders -->
+                  <div id="platoon-type-filter-wrap" class="flex items-center rounded-xl bg-slate-100 p-1 border border-slate-200">
+                    <button onclick="setPlatoonTypeFilter('all', this)" class="platoon-type-btn rounded-lg px-3 py-1 text-xs font-bold bg-white text-forest-900 shadow-xs transition">ทั้งหมด</button>
+                    <button onclick="setPlatoonTypeFilter('regular', this)" class="platoon-type-btn rounded-lg px-3 py-1 text-xs font-bold text-slate-500 transition">🛡️ หมวดปกติ (ชาย)</button>
+                    <button onclick="setPlatoonTypeFilter('special', this)" class="platoon-type-btn rounded-lg px-3 py-1 text-xs font-bold text-slate-500 transition">🎀 หมวดพิเศษ (หญิง)</button>
+                  </div>
+                  <a href="reports.html" class="text-xs font-bold text-forest-600 hover:text-forest-700 ml-2">ดูรายงานฉบับเต็ม</a>
+                </div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full min-w-[550px] text-left">
+                  <thead class="bg-slate-50/80 text-[.68rem] font-bold uppercase tracking-wide text-slate-400">
+                    <tr>
+                      <th class="px-6 py-3">สังกัด</th>
+                      <th class="px-4 py-3">ยอดเต็ม</th>
+                      <th class="px-4 py-3">มาเรียน</th>
+                      <th class="px-4 py-3">ลา/ขาด</th>
+                      <th class="px-4 py-3">เปอร์เซ็นต์</th>
+                      <th class="px-4 py-3 text-right">รายละเอียด</th>
+                    </tr>
+                  </thead>
+                  <tbody class="text-sm" id="cmd-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="toast"
+    class="toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-xl bg-forest-900 px-4 py-3 text-sm font-bold text-white shadow-xl">
+    <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-400 text-[.65rem] text-forest-900">✓</span>
+    <span id="toastText">ดำเนินการสำเร็จ</span>
+  </div>
+
+  <!-- Platoon Detail Modal -->
+  <div class="fixed inset-0 z-50 hidden place-items-center bg-slate-950/45 p-4 backdrop-blur-sm"
+    id="platoon-detail-modal">
+    <div class="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col max-h-[88vh]">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-emerald-950/5 px-6 py-4 bg-emerald-50/50 shrink-0">
+        <div>
+          <h3 class="font-extrabold text-forest-900 text-lg" id="platoon-modal-title">รายละเอียดกำลังพล</h3>
+          <p class="text-xs text-slate-500 mt-0.5" id="platoon-modal-subtitle">รายชื่อกำลังพลแยกตามสถานะการเข้าเรียน</p>
+        </div>
+        <button
+          class="h-8 w-8 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-forest-900 font-bold transition"
+          onclick="closePlatoonModal()">✕</button>
+      </div>
+
+      <!-- Stats Summary in Modal -->
+      <div class="grid grid-cols-4 gap-2 px-6 py-3 border-b border-slate-100 bg-slate-50/50 text-center shrink-0">
+        <div class="rounded-xl bg-emerald-50 border border-emerald-100 py-2.5">
+          <p class="text-[0.65rem] font-bold text-emerald-700 uppercase">มาเรียน</p>
+          <p class="text-xl font-black text-emerald-900" id="modal-stat-present">0</p>
+        </div>
+        <div class="rounded-xl bg-amber-50 border border-amber-100 py-2.5">
+          <p class="text-[0.65rem] font-bold text-amber-700 uppercase">มาสาย</p>
+          <p class="text-xl font-black text-amber-900" id="modal-stat-late">0</p>
+        </div>
+        <div class="rounded-xl bg-blue-50 border border-blue-100 py-2.5">
+          <p class="text-[0.65rem] font-bold text-blue-700 uppercase">ลา</p>
+          <p class="text-xl font-black text-blue-900" id="modal-stat-leave">0</p>
+        </div>
+        <div class="rounded-xl bg-rose-50 border border-rose-100 py-2.5">
+          <p class="text-[0.65rem] font-bold text-rose-700 uppercase">ขาด</p>
+          <p class="text-xl font-black text-rose-900" id="modal-stat-absent">0</p>
+        </div>
+      </div>
+
+      <!-- Search Bar in Modal -->
+      <div class="px-6 py-3 border-b border-slate-100 shrink-0">
+        <input type="text" id="platoon-modal-search" placeholder="🔍 ค้นหาชื่อ หรือ รหัส นศท..."
+          class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-forest-900 focus:border-forest-600 focus:ring focus:ring-forest-600/20 outline-none transition"
+          oninput="filterPlatoonModalList()">
+      </div>
+
+      <!-- Batch Platoon Check-In / Check-Out Actions Bar -->
+      <div class="px-6 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0 gap-2 overflow-x-auto">
+        <span class="text-xs font-extrabold text-forest-900 shrink-0">⚡ เช็คชื่อยกหมวด (ไม่ต้องสแกนหน้า):</span>
+        <div class="flex items-center gap-2">
+          <button onclick="batchMarkPlatoonCheckIn()" class="rounded-xl bg-forest-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-forest-700 transition shrink-0 flex items-center gap-1">
+            <span>☀️</span> เช็คเข้าเรียนทั้งหมวด
+          </button>
+          <button onclick="batchMarkPlatoonCheckOut()" class="rounded-xl bg-amber-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-amber-700 transition shrink-0 flex items-center gap-1">
+            <span>🌙</span> เช็คชื่อออกทั้งหมวด
+          </button>
+        </div>
+      </div>
+
+      <!-- Student List -->
+      <div class="overflow-y-auto flex-1 p-5" id="platoon-modal-content">
+        <!-- Render lists dynamically here -->
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="border-t border-emerald-950/5 px-6 py-3.5 bg-slate-50 flex justify-end shrink-0">
+        <button
+          class="rounded-xl border border-slate-200 bg-white px-5 py-2 text-sm font-bold text-slate-500 hover:bg-slate-50 transition"
+          onclick="closePlatoonModal()">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/attendance.js"></script>
+
+  <script>
+    /* global auth, db, COLLECTIONS, ROLES, ROLE_NAMES, formatTime, formatDateThai, initials, getStudentHistory, getTodayAttendance, getDailyRecords, renderSidebar, renderTopbarUser, escapeHtml, today */
+    var currentUser = null;
+    var commanderGroups = {};
+    var activeModalGroupKey = null;
+
+    auth.onAuthStateChanged(async user => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      try {
+        var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
+        if (!snap.exists) { await auth.signOut(); window.location.href = 'index.html'; return; }
+        currentUser = { uid: user.uid, ...snap.data() };
+        currentUser.role = Number(currentUser.role) || ROLES.STUDENT;
+        initDashboard(currentUser);
+      } catch (err) {
+        console.error("Error loading user profile:", err);
+        var loadEl = document.getElementById('loading-state');
+        if (loadEl) {
+          loadEl.innerHTML = `
+        <div class="text-center p-6">
+          <p class="text-rose-500 font-bold mb-2">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>
+          <p class="text-xs text-slate-400 mb-4">${escapeHtml(err.message || 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้')}</p>
+          <button onclick="location.reload()" class="px-4 py-2 bg-forest-600 text-white rounded-xl text-xs font-bold hover:bg-forest-700 transition">ลองใหม่อีกครั้ง</button>
+        </div>`;
+        }
+      }
+    });
+
+    function initDashboard(user) {
+      renderSidebar(user);
+      renderTopbarUser(user);
+
+      const userRole = Number(user.role) || ROLES.STUDENT;
+      const roleName = ROLE_NAMES[userRole] || 'นักศึกษาวิชาทหาร';
+
+      const sidebarAvatar = document.getElementById('sidebar-avatar');
+      if (sidebarAvatar) sidebarAvatar.textContent = initials(user.name);
+
+      document.getElementById('sidebar-name').textContent = user.name || user.studentId || 'ผู้ใช้งาน';
+      document.getElementById('sidebar-role').textContent = roleName;
+      document.getElementById('sidebar-user-card').classList.remove('hidden');
+
+      var now = new Date();
+      const dateStr = now.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('date-display').textContent = dateStr;
+
+      document.getElementById('greet-name').textContent = 'สวัสดี, ' + (user.name ? user.name.split(' ')[0] : 'ผู้ใช้งาน') + ' 👋';
+
+      if (userRole === ROLES.STUDENT) {
+        document.getElementById('dash-title').textContent = 'พร้อมสำหรับการฝึกวันนี้หรือยัง?';
+        document.getElementById('dash-subtitle').textContent = 'ตรวจสอบเวลาเรียนและสถานะของคุณได้จากหน้านี้';
+        document.getElementById('student-content').classList.remove('hidden');
+        loadStudentData(user, dateStr);
+      } else {
+        document.getElementById('dash-title').textContent = 'ศูนย์ควบคุมกำลังพล';
+        document.getElementById('dash-subtitle').textContent = 'ภาพรวมการเข้าฝึกของ ' + roleName;
+        document.getElementById('commander-content').classList.remove('hidden');
+        loadCommanderData(user, dateStr);
+      }
+    }
+
+    async function loadStudentData(user, dateStr) {
+      document.getElementById('today-date').textContent = dateStr;
+      document.getElementById('info-id').textContent = user.studentId || '-';
+      document.getElementById('info-company').textContent = 'ปี ' + (user.year || '-') + ' / ' + (user.company || '-');
+      document.getElementById('info-school').textContent = user.school || '-';
+
+      try {
+        const history = await getStudentHistory(user.uid, 7);
+        let activeRecords = (history || []).filter(r => r.checkInTime || r.status === 'present' || r.status === 'late' || r.status === 'leave');
+
+        let presentCount = activeRecords.filter(r => r.status === 'present' || r.status === 'late').length;
+        let lateCount = activeRecords.filter(r => r.status === 'late').length;
+        let leaveCount = activeRecords.filter(r => r.status === 'leave').length;
+
+        let ratePct = activeRecords.length ? Math.round((presentCount / activeRecords.length) * 100) : 100;
+
+        document.getElementById('stat-1-val').textContent = ratePct + '%';
+        document.getElementById('stat-2-val').textContent = presentCount + ' วัน';
+        document.getElementById('stat-3-val').textContent = lateCount + ' ครั้ง';
+        document.getElementById('stat-4-val').textContent = leaveCount + ' วัน';
+
+        const tbody = document.getElementById('history-body');
+        tbody.innerHTML = '';
+        if (!activeRecords || activeRecords.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-slate-400">ยังไม่มีประวัติการเข้าเรียน</td></tr>';
+        } else {
+          activeRecords.forEach(r => {
+            let inTime = r.checkInTime ? formatTime(r.checkInTime) : '-';
+            let outTime = r.checkOutTime ? formatTime(r.checkOutTime) : '-';
+            let statBadge = '';
+            if (r.status === 'present') {
+              statBadge = '<span class="rounded-full bg-emerald-50 px-2.5 py-1 text-[.68rem] font-bold text-emerald-700">มาเรียน</span>';
+            } else if (r.status === 'late') {
+              statBadge = '<span class="rounded-full bg-amber-50 px-2.5 py-1 text-[.68rem] font-bold text-amber-700">มาสาย</span>';
+            } else if (r.status === 'leave') {
+              statBadge = '<span class="rounded-full bg-blue-50 px-2.5 py-1 text-[.68rem] font-bold text-blue-700">ลา</span>';
+            } else {
+              statBadge = '<span class="rounded-full bg-rose-50 px-2.5 py-1 text-[.68rem] font-bold text-rose-700">ขาดเรียน</span>';
+            }
+            tbody.innerHTML += `<tr class="table-row border-t border-slate-50"><td class="px-6 py-3.5 font-semibold text-forest-900">${formatDateThai(r.date)}</td><td class="px-4 py-3.5 text-slate-500">${inTime}</td><td class="px-4 py-3.5 text-slate-500">${outTime}</td><td class="px-4 py-3.5">${statBadge}</td></tr>`;
+          });
+        }
+
+        var todayRec = await getTodayAttendance(user.uid);
+        const badge = document.getElementById('todayBadge');
+        const btn = document.getElementById('checkInButton');
+        if (todayRec) {
+          if (todayRec.status === 'leave') {
+            badge.textContent = 'ลากิจ/ลาป่วย';
+            badge.className = 'rounded-full bg-blue-400/20 text-blue-300 border border-blue-400/30 px-3 py-1 text-xs font-bold';
+            btn.classList.add('hidden');
+            document.getElementById('today-desc').textContent = 'ยื่นอนุมัติการลาสำหรับวันนี้เรียบร้อยแล้ว';
+          } else if (todayRec.checkInTime) {
+            badge.textContent = 'เช็คชื่อเข้าแล้ว';
+            badge.className = 'rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 px-3 py-1 text-xs font-bold';
+            btn.innerHTML = '<span>🚪</span> เช็คชื่อออก (เลิกฝึก)';
+            btn.className = 'rounded-xl bg-amber-500 px-6 py-3.5 text-base font-extrabold text-white shadow-lg shadow-amber-500/30 transition hover:bg-amber-600 active:scale-95 text-center flex items-center justify-center gap-2';
+            document.getElementById('today-desc').textContent = 'บันทึกเวลาเข้าเรียนแล้ว: ' + formatTime(todayRec.checkInTime);
+            if (todayRec.checkOutTime) {
+              badge.textContent = 'เช็คชื่อออกแล้ว';
+              badge.className = 'rounded-full bg-slate-400/20 text-slate-300 border border-slate-400/30 px-3 py-1 text-xs font-bold';
+              btn.classList.add('hidden');
+              document.getElementById('today-desc').textContent = 'บันทึกเวลาเข้าและออกเรียบร้อยแล้ว';
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error loading student data:', e);
+      } finally {
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('content-state').classList.remove('hidden');
+      }
+    }
+
+    var currentPlatoonTypeFilter = 'all';
+    var cachedCombinedRecords = [];
+    var selectedCmdDate = dateToStr();
+
+    function onCommanderDateChange(val) {
+      if (!val) return;
+      selectedCmdDate = val;
+      if (currentUser) {
+        loadCommanderData(currentUser, val);
+      }
+    }
+
+    function setPlatoonTypeFilter(type, btn) {
+      currentPlatoonTypeFilter = type;
+      document.querySelectorAll('.platoon-type-btn').forEach(b => {
+        b.classList.remove('bg-white', 'text-forest-900', 'shadow-xs', 'active');
+        b.classList.add('text-slate-500');
+      });
+      if (btn) {
+        btn.classList.remove('text-slate-500');
+        btn.classList.add('bg-white', 'text-forest-900', 'shadow-xs', 'active');
+      }
+      renderCommanderTable();
+    }
+
+    async function loadCommanderData(user, dateStr) {
+      if (!dateStr) dateStr = selectedCmdDate || dateToStr();
+      selectedCmdDate = dateStr;
+
+      const picker = document.getElementById('cmd-date-picker');
+      if (picker && picker.value !== dateStr) picker.value = dateStr;
+
+      document.getElementById('cmd-date').textContent = formatDateThai(dateStr);
+
+      try {
+        let filters = {};
+        if (user.role === ROLES.PLATOON) {
+          if (user.company) filters.company = user.company;
+          if (user.platoon) filters.platoon = user.platoon;
+        } else if (user.role === ROLES.COMPANY) {
+          if (user.company) filters.company = user.company;
+        }
+
+        const records = await getDailyRecords(dateStr, filters);
+
+        // Fetch leave requests to merge Leave status (Approved -> ลา, Pending -> กำลังพิจารณา, Rejected -> ขาด)
+        let leaveSnap = await db.collection(COLLECTIONS.LEAVE).get();
+        let leaveMap = new Map();
+        leaveSnap.docs.forEach(d => {
+          let l = d.data();
+          if (l.startDate <= dateStr && l.endDate >= dateStr) {
+            leaveMap.set(l.uid, l);
+          }
+        });
+        
+        let allStudentsInScope = [];
+        if (user.role === ROLES.PLATOON) {
+          let sQuery = db.collection(COLLECTIONS.USERS).where('role', '==', ROLES.STUDENT);
+          if (user.company) sQuery = sQuery.where('company', '==', user.company);
+          if (user.platoon) sQuery = sQuery.where('platoon', '==', user.platoon);
+          const sSnap = await sQuery.get();
+          allStudentsInScope = sSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        }
+
+        const recMap = new Map(records.map(r => [r.uid || r.id, r]));
+        const targetStudentList = (user.role === ROLES.PLATOON && allStudentsInScope.length > 0) ? allStudentsInScope : records;
+
+        cachedCombinedRecords = targetStudentList.map(s => {
+          const uid = s.uid || s.id;
+          const rec = recMap.get(uid) || {};
+          const leaveReq = leaveMap.get(uid);
+
+          let effectiveStatus = rec.status || 'absent';
+          let note = rec.note || '';
+
+          if (leaveReq) {
+            if (leaveReq.status === 'approved') {
+              effectiveStatus = 'leave';
+              note = leaveReq.reason ? 'ลา (อนุมัติแล้ว): ' + leaveReq.reason : 'ลากิจ / ลาป่วย';
+            } else if (leaveReq.status === 'pending') {
+              effectiveStatus = 'pending_leave';
+              note = leaveReq.reason ? 'กำลังพิจารณา: ' + leaveReq.reason : 'ใบลาอยู่ระหว่างพิจารณา';
+            } else if (leaveReq.status === 'rejected') {
+              if (!rec.checkInTime && effectiveStatus !== 'present' && effectiveStatus !== 'late') {
+                effectiveStatus = 'absent';
+                note = 'ขาดเรียน (ใบลาไม้อนุมัติ)';
+              }
+            }
+          }
+
+          return {
+            uid: uid,
+            id: uid,
+            name: s.name || rec.name || '-',
+            studentId: s.studentId || rec.studentId || '-',
+            company: s.company || rec.company || '',
+            platoon: s.platoon || rec.platoon || '',
+            status: effectiveStatus,
+            checkInTime: rec.checkInTime || null,
+            checkOutTime: rec.checkOutTime || null,
+            note: note,
+            leaveReq: leaveReq || null
+          };
+        });
+
+        renderCommanderTable();
+      } catch (e) {
+        console.error('Error loading commander data:', e);
+      } finally {
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('content-state').classList.remove('hidden');
+      }
+    }
+
+    function renderCommanderTable() {
+      let filteredRecords = cachedCombinedRecords;
+      if (currentPlatoonTypeFilter === 'regular') {
+        filteredRecords = cachedCombinedRecords.filter(r => !String(r.platoon || '').includes('พิเศษ'));
+      } else if (currentPlatoonTypeFilter === 'special') {
+        filteredRecords = cachedCombinedRecords.filter(r => String(r.platoon || '').includes('พิเศษ'));
+      }
+
+      let present = filteredRecords.filter(r => r.status === 'present' || r.status === 'late').length;
+      let leave = filteredRecords.filter(r => r.status === 'leave').length;
+      let pendingLeave = filteredRecords.filter(r => r.status === 'pending_leave').length;
+      let absent = filteredRecords.filter(r => r.status === 'absent').length;
+      let target = filteredRecords.length || (currentUser.role === ROLES.PLATOON ? 40 : (currentUser.role === ROLES.COMPANY ? 150 : 300));
+
+      document.getElementById('stat-1-lbl').textContent = 'ยอดรวมมาเรียน';
+      document.getElementById('stat-1-val').textContent = present + ' นาย';
+
+      document.getElementById('stat-2-lbl').textContent = 'ลา / กำลังพิจารณา';
+      document.getElementById('stat-2-val').textContent = (leave + pendingLeave) + ' นาย';
+
+      document.getElementById('stat-3-lbl').textContent = 'ขาดเรียน / ไม่เช็คชื่อ';
+      document.getElementById('stat-3-val').textContent = absent + ' นาย';
+
+      document.getElementById('stat-4-lbl').textContent = 'เปอร์เซ็นต์เข้าเรียน';
+      document.getElementById('stat-4-val').textContent = (target > 0 ? Math.round((present / target) * 100) : 0) + '%';
+
+      const tbody = document.getElementById('cmd-table-body');
+      tbody.innerHTML = '';
+      if (!filteredRecords || filteredRecords.length === 0) {
+        tbody.innerHTML = `<tr class="table-row border-t border-slate-50"><td colspan="6" class="px-6 py-4 text-center text-slate-400">ไม่พบข้อมูลกำลังพลตามเงื่อนไขที่เลือก</td></tr>`;
+      } else {
+        commanderGroups = {};
+        filteredRecords.forEach(r => {
+          const key = (r.company ? 'กองร้อย/ปี ' + r.company : 'ทั่วไป') + (r.platoon ? ' มว.' + r.platoon : '');
+          if (!commanderGroups[key]) {
+            commanderGroups[key] = { total: 0, present: 0, leave: 0, pendingLeave: 0, absent: 0, records: [], company: r.company, platoon: r.platoon };
+          }
+          commanderGroups[key].total++;
+          commanderGroups[key].records.push(r);
+          if (r.status === 'present' || r.status === 'late') commanderGroups[key].present++;
+          else if (r.status === 'leave') commanderGroups[key].leave++;
+          else if (r.status === 'pending_leave') commanderGroups[key].pendingLeave++;
+          else commanderGroups[key].absent++;
+        });
+
+        Object.keys(commanderGroups).forEach(key => {
+          const g = commanderGroups[key];
+          const pct = g.total ? Math.round((g.present / g.total) * 100) : 0;
+          const isSpecial = String(g.platoon || key).includes('พิเศษ');
+          const typeBadge = isSpecial 
+            ? `<span class="ml-2 rounded-full bg-pink-50 border border-pink-200 px-2.5 py-0.5 text-[0.65rem] font-extrabold text-pink-700">🎀 หมวดพิเศษ (หญิง)</span>`
+            : `<span class="ml-2 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-[0.65rem] font-extrabold text-blue-700">🛡️ หมวดปกติ (ชาย)</span>`;
+
+          tbody.innerHTML += `
+        <tr class="table-row border-t border-slate-50 hover:bg-slate-50/70 transition cursor-pointer" onclick="showPlatoonDetails('${escapeHtml(key)}')">
+          <td class="px-6 py-3.5 font-semibold text-forest-900 flex items-center">${key} ${typeBadge}</td>
+          <td class="px-4 py-3.5 text-slate-500">${g.total}</td>
+          <td class="px-4 py-3.5 text-slate-500">${g.present}</td>
+          <td class="px-4 py-3.5 text-slate-500">${g.leave + g.pendingLeave + g.absent}</td>
+          <td class="px-4 py-3.5"><span class="rounded-full bg-emerald-50 px-2.5 py-1 text-[.68rem] font-bold text-emerald-700">${pct}%</span></td>
+          <td class="px-4 py-3.5 text-right"><button class="rounded-xl border border-emerald-100 bg-forest-50 px-3 py-1 text-xs font-bold text-forest-700 hover:bg-forest-100 transition">ดูรายชื่อ & เช็คชื่อ</button></td>
+        </tr>`;
+        });
+      }
+    }
+
+    function showPlatoonDetails(groupKey) {
+      activeModalGroupKey = groupKey;
+      document.getElementById('platoon-modal-search').value = '';
+      document.getElementById('platoon-modal-title').textContent = 'รายละเอียดกำลังพล - ' + groupKey;
+
+      const g = commanderGroups[groupKey];
+      if (!g) return;
+
+      let countPresent = g.records.filter(r => r.status === 'present').length;
+      let countLate = g.records.filter(r => r.status === 'late').length;
+      let countLeave = g.records.filter(r => r.status === 'leave' || r.status === 'pending_leave').length;
+      let countAbsent = g.records.filter(r => r.status === 'absent').length;
+
+      document.getElementById('modal-stat-present').textContent = countPresent;
+      document.getElementById('modal-stat-late').textContent = countLate;
+      document.getElementById('modal-stat-leave').textContent = countLeave;
+      document.getElementById('modal-stat-absent').textContent = countAbsent;
+
+      renderPlatoonModalList(g.records);
+
+      var modal = document.getElementById('platoon-detail-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('grid');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePlatoonModal() {
+      var modal = document.getElementById('platoon-detail-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('grid');
+      document.body.style.overflow = '';
+    }
+
+    function renderPlatoonModalList(records) {
+      const container = document.getElementById('platoon-modal-content');
+      container.innerHTML = '';
+
+      if (!records || records.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-slate-400">ไม่พบรายชื่อตามเงื่อนไข</div>`;
+        return;
+      }
+
+      const statusOrder = { 'present': 1, 'late': 2, 'pending_leave': 3, 'leave': 4, 'absent': 5 };
+      const sortedRecords = [...records].sort((a, b) => {
+        const orderA = statusOrder[a.status] || 99;
+        const orderB = statusOrder[b.status] || 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.studentId || '').localeCompare(b.studentId || '');
+      });
+
+      let html = '<div class="space-y-2">';
+      sortedRecords.forEach(r => {
+        let statusBadge = '';
+        let timeInfo = '';
+        const targetUid = r.uid || r.id;
+
+        if (r.status === 'present') {
+          statusBadge = '<span class="rounded-full bg-emerald-50 px-2.5 py-1 text-[0.7rem] font-bold text-emerald-700">มาเรียน ☀️</span>';
+          timeInfo = `<span class="text-xs text-slate-400">เข้า: ${r.checkInTime ? formatTime(r.checkInTime) : 'เช็คโดยหัวหน้าหมวด'} | ออก: ${r.checkOutTime ? formatTime(r.checkOutTime) : '-'}</span>`;
+        } else if (r.status === 'late') {
+          statusBadge = '<span class="rounded-full bg-amber-50 px-2.5 py-1 text-[0.7rem] font-bold text-amber-700">มาสาย ⏰</span>';
+          timeInfo = `<span class="text-xs text-slate-400">เข้า: ${r.checkInTime ? formatTime(r.checkInTime) : '-'} | ออก: ${r.checkOutTime ? formatTime(r.checkOutTime) : '-'}</span>`;
+        } else if (r.status === 'leave') {
+          statusBadge = '<span class="rounded-full bg-blue-50 px-2.5 py-1 text-[0.7rem] font-bold text-blue-700">ลา ✅</span>';
+          timeInfo = `<span class="text-xs text-slate-500 font-medium">${r.note ? escapeHtml(r.note) : 'ลากิจ / ลาป่วย (อนุมัติแล้ว)'}</span>`;
+        } else if (r.status === 'pending_leave') {
+          statusBadge = '<span class="rounded-full bg-amber-100 px-2.5 py-1 text-[0.7rem] font-extrabold text-amber-800">⏳ กำลังพิจารณา</span>';
+          timeInfo = `<span class="text-xs text-amber-700 font-medium">${r.note ? escapeHtml(r.note) : 'ยื่นใบลาแล้ว (รออนุมัติ)'}</span>`;
+        } else {
+          statusBadge = '<span class="rounded-full bg-rose-50 px-2.5 py-1 text-[0.7rem] font-bold text-rose-700">ขาดเรียน ❌</span>';
+          timeInfo = `<span class="text-xs text-rose-400 font-medium">${r.note ? escapeHtml(r.note) : 'ไม่ได้เช็คชื่อ'}</span>`;
+        }
+
+        html += `
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-white hover:border-forest-100 transition gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-50 text-[10px] font-bold text-forest-700">
+            ${initials(r.name || 'น ศ')}
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-bold text-forest-900 truncate">${escapeHtml(r.name || '-')}</p>
+            <p class="text-xs text-slate-400 font-mono">รหัส: ${escapeHtml(r.studentId || '-')}</p>
+          </div>
+        </div>
+        <div class="flex flex-col items-end gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-50">
+          <div class="flex items-center gap-2">
+            ${statusBadge}
+            ${timeInfo}
+          </div>
+          <!-- Action Buttons (No Face Scan Required) -->
+          <div class="flex flex-wrap items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100">
+            <span class="text-[0.65rem] font-bold text-slate-400 mr-1 pl-1">จัดการ:</span>
+            <button onclick="individualCheckInOut('${targetUid}', 'checkIn')" class="px-2 py-0.5 text-[0.65rem] font-bold rounded ${r.status==='present' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'}">☀️ เข้า</button>
+            <button onclick="individualCheckInOut('${targetUid}', 'checkOut')" class="px-2 py-0.5 text-[0.65rem] font-bold rounded ${r.checkOutTime ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-amber-50 hover:text-amber-700'}">🌙 ออก</button>
+            <button onclick="quickUpdateStatus('${targetUid}', 'leave')" class="px-2 py-0.5 text-[0.65rem] font-bold rounded ${r.status==='leave' ? 'bg-blue-600 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-700'}">ลา</button>
+            <button onclick="quickUpdateStatus('${targetUid}', 'absent')" class="px-2 py-0.5 text-[0.65rem] font-bold rounded ${r.status==='absent' ? 'bg-rose-600 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-rose-50 hover:text-rose-700'}">ขาด</button>
+          </div>
+        </div>
+      </div>
+    `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    async function quickUpdateStatus(uid, newStatus) {
+      if (!uid) return;
+      try {
+        const dateStr = selectedCmdDate || dateToStr();
+        await updateAttendanceStatus(dateStr, uid, newStatus, 'แก้ไขโดย ' + (currentUser.name || ROLE_NAMES[currentUser.role]));
+        await loadCommanderData(currentUser, dateStr);
+        if (activeModalGroupKey && commanderGroups[activeModalGroupKey]) {
+          showPlatoonDetails(activeModalGroupKey);
+        }
+      } catch(e) {
+        alert('เกิดข้อผิดพลาดในการแก้ไขสถานะ: ' + e.message);
+      }
+    }
+
+    async function individualCheckInOut(uid, type) {
+      if (!uid) return;
+      const dateStr = selectedCmdDate || dateToStr();
+      const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const ref = db.collection(COLLECTIONS.ATTENDANCE).doc(dateStr).collection('records').doc(uid);
+
+      try {
+        if (type === 'checkIn') {
+          await ref.set({
+            status: 'present',
+            checkInTime: nowTime,
+            byCommander: true,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          showToast('เช็คชื่อเข้าเรียนสำเร็จ (โดยหัวหน้าหมวด)');
+        } else if (type === 'checkOut') {
+          await ref.set({
+            checkOutTime: nowTime,
+            byCommander: true,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          showToast('เช็คชื่อออกสำเร็จ (โดยหัวหน้าหมวด)');
+        }
+        await loadCommanderData(currentUser, dateStr);
+        if (activeModalGroupKey && commanderGroups[activeModalGroupKey]) {
+          showPlatoonDetails(activeModalGroupKey);
+        }
+      } catch(e) {
+        alert('เกิดข้อผิดพลาด: ' + e.message);
+      }
+    }
+
+    async function batchMarkPlatoonCheckIn() {
+      if (!activeModalGroupKey || !commanderGroups[activeModalGroupKey]) return;
+      const records = commanderGroups[activeModalGroupKey].records;
+      const dateStr = selectedCmdDate || dateToStr();
+      
+      if (!confirm(`ยืนยันเช็คชื่อเข้าเรียนตอนเช้าสำหรับ นศท. ทั้งหมดใน ${activeModalGroupKey} (โดยไม่ต้องสแกนใบหน้า)?`)) return;
+
+      try {
+        const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const batch = db.batch();
+        records.forEach(r => {
+          const uid = r.uid || r.id;
+          if (r.status !== 'leave' && r.status !== 'pending_leave') {
+            const ref = db.collection(COLLECTIONS.ATTENDANCE).doc(dateStr).collection('records').doc(uid);
+            batch.set(ref, {
+              uid: uid,
+              name: r.name || '',
+              studentId: r.studentId || '',
+              company: r.company || '',
+              platoon: r.platoon || '',
+              status: 'present',
+              checkInTime: r.checkInTime || nowTime,
+              byCommander: true,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+          }
+        });
+        await batch.commit();
+        showToast('เช็คชื่อเข้าเรียนทั้งหมวดเรียบร้อย!');
+        await loadCommanderData(currentUser, dateStr);
+        if (activeModalGroupKey && commanderGroups[activeModalGroupKey]) {
+          showPlatoonDetails(activeModalGroupKey);
+        }
+      } catch(e) {
+        alert('เกิดข้อผิดพลาด: ' + e.message);
+      }
+    }
+
+    async function batchMarkPlatoonCheckOut() {
+      if (!activeModalGroupKey || !commanderGroups[activeModalGroupKey]) return;
+      const records = commanderGroups[activeModalGroupKey].records;
+      const dateStr = selectedCmdDate || dateToStr();
+      
+      if (!confirm(`ยืนยันเช็คชื่อออก (เลิกฝึก) สำหรับ นศท. ทั้งหมดใน ${activeModalGroupKey}?`)) return;
+
+      try {
+        const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const batch = db.batch();
+        records.forEach(r => {
+          const uid = r.uid || r.id;
+          if (r.status === 'present' || r.status === 'late') {
+            const ref = db.collection(COLLECTIONS.ATTENDANCE).doc(dateStr).collection('records').doc(uid);
+            batch.set(ref, {
+              checkOutTime: r.checkOutTime || nowTime,
+              byCommander: true,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+          }
+        });
+        await batch.commit();
+        showToast('เช็คชื่อออกทั้งหมวดเรียบร้อย!');
+        await loadCommanderData(currentUser, dateStr);
+        if (activeModalGroupKey && commanderGroups[activeModalGroupKey]) {
+          showPlatoonDetails(activeModalGroupKey);
+        }
+      } catch(e) {
+        alert('เกิดข้อผิดพลาด: ' + e.message);
+      }
+    }
+
+    function filterPlatoonModalList() {
+      if (!activeModalGroupKey || !commanderGroups[activeModalGroupKey]) return;
+      const searchVal = document.getElementById('platoon-modal-search').value.toLowerCase().trim();
+      const allRecords = commanderGroups[activeModalGroupKey].records;
+
+      if (!searchVal) {
+        renderPlatoonModalList(allRecords);
+        return;
+      }
+
+      const filtered = allRecords.filter(r => {
+        return (r.name || '').toLowerCase().includes(searchVal) ||
+          (r.studentId || '').toLowerCase().includes(searchVal);
+      });
+
+      renderPlatoonModalList(filtered);
+    }
+  </script>
+</body>
+
+</html>
