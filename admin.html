@@ -610,7 +610,7 @@
             <input id="st-birth" placeholder="เช่น 15/01/2005 หรือ 123456" required class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
           </div>
           
-          <!-- Conditional Fields for Platoon Leader -->
+          <!-- Conditional Fields for Platoon / Company Leader -->
           <div id="st-company-wrap">
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ชั้นปีที่ดูแล <span class="text-rose-500">*</span></label>
             <select id="st-company" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
@@ -619,6 +619,14 @@
               <option value="3">ชั้นปีที่ 3</option>
               <option value="4">ชั้นปีที่ 4</option>
               <option value="5">ชั้นปีที่ 5</option>
+            </select>
+          </div>
+          <div id="st-track-wrap" class="sm:col-span-2">
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">สายการฝึก / ประเภทกองร้อยที่ดูแล <span class="text-rose-500">*</span></label>
+            <select id="st-track" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+              <option value="all">ทั้ง 2 สายการฝึก (ดูแลทั้งชายและหญิง)</option>
+              <option value="regular">🛡️ กองร้อยปกติ (นศท. ชายเท่านั้น)</option>
+              <option value="special">🎀 กองร้อยพิเศษ (นศท. หญิงเท่านั้น)</option>
             </select>
           </div>
           <div id="st-platoon-wrap">
@@ -1130,8 +1138,11 @@ function toggleStaffFields() {
   var role = document.getElementById('st-role').value;
   var needCompany = (role == '2' || role == '3');
   var needPlatoon = (role == '2');
+  var needTrack   = (role == '2' || role == '3');
+
   document.getElementById('st-company-wrap').style.display = needCompany ? 'block' : 'none';
   document.getElementById('st-platoon-wrap').style.display = needPlatoon ? 'block' : 'none';
+  document.getElementById('st-track-wrap').style.display   = needTrack   ? 'block' : 'none';
 }
 
 // ─── Staff ────────────────────────────────────────────────────
@@ -1166,8 +1177,9 @@ async function loadStaff() {
             <td class="px-4 py-3 text-sm font-medium text-slate-700">
               <span class="rounded-md bg-slate-100 px-2 py-1 text-[0.65rem] font-bold text-slate-600">${ROLE_NAMES[s.role]||s.role}</span>
             </td>
-            <td class="px-4 py-3 text-sm text-slate-500">
-              ${s.role === 3 ? `ปี ${escapeHtml(s.company||'-')} / ม. ${escapeHtml(s.platoon||'-')}` : 'ทั้งหมด'}
+            <td class="px-4 py-3 text-sm text-slate-500 font-semibold">
+              ${s.role === 3 ? `ปี ${escapeHtml(s.company||'-')} (${s.track === 'regular' ? '🛡️ กองร้อยปกติ (ชาย)' : (s.track === 'special' ? '🎀 กองร้อยพิเศษ (หญิง)' : 'ทุกกองร้อย')})` : 
+                (s.role === 2 ? `ปี ${escapeHtml(s.company||'-')} / ${String(s.platoon||'').includes('พิเศษ') ? '🎀 หมวดพิเศษ ' + escapeHtml(s.platoon) + ' (หญิง)' : '🛡️ หมวดปกติ ' + escapeHtml(s.platoon) + ' (ชาย)'}` : 'ทั้งหมด')}
             </td>
             <td class="px-4 py-3 text-right">
               <button onclick="toggleActive('${s.id}',${s.active!==false})" class="rounded-lg px-2.5 py-1.5 text-[0.65rem] font-bold transition ${s.active!==false ? 'bg-rose-50 text-rose-600 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}">
@@ -1187,6 +1199,7 @@ function openAddStaffModal() {
   document.getElementById('st-birth').value = '';
   document.getElementById('st-company').value = '1';
   document.getElementById('st-platoon').value = '';
+  document.getElementById('st-track').value = 'all';
   document.getElementById('st-role').value = '3';
   toggleStaffFields();
   openModal('add-staff-modal'); 
@@ -1203,6 +1216,7 @@ async function saveStaff() {
       role:      parseInt(document.getElementById('st-role').value),
       company:   document.getElementById('st-company').value.trim(),
       platoon:   document.getElementById('st-platoon').value.trim(),
+      track:     document.getElementById('st-track').value,
     });
     closeModal('add-staff-modal');
     showToast('เพิ่มเจ้าหน้าที่สำเร็จ');

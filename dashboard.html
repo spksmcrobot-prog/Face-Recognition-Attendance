@@ -576,6 +576,17 @@
           allStudentsInScope = sSnap.docs
             .map(d => ({ uid: d.id, ...d.data() }))
             .filter(s => String(s.platoon || '').trim() === String(user.platoon || '').trim());
+        } else if (user.role === ROLES.COMPANY) {
+          const filterWrap = document.getElementById('platoon-type-filter-wrap');
+          if (user.track === 'regular') {
+            currentPlatoonTypeFilter = 'regular';
+            if (filterWrap) filterWrap.classList.add('hidden');
+          } else if (user.track === 'special') {
+            currentPlatoonTypeFilter = 'special';
+            if (filterWrap) filterWrap.classList.add('hidden');
+          } else {
+            if (filterWrap) filterWrap.classList.remove('hidden');
+          }
         } else {
           const filterWrap = document.getElementById('platoon-type-filter-wrap');
           if (filterWrap) filterWrap.classList.remove('hidden');
