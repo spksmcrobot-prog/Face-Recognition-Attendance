@@ -15,7 +15,18 @@ async function generateSummary(startDate, endDate, filters = {}) {
     if (filters.platoon) query = query.where('platoon','==',filters.platoon);
     if (filters.school)  query = query.where('school','==',filters.school);
     const snap = await query.get();
-    const records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    let records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Enforce strict track/gender filtering for role 2 and role 3 commanders
+    if (filters.track && filters.track !== 'all') {
+      records = records.filter(r => {
+        const isSpecialPlatoon = String(r.platoon || '').includes('พิเศษ');
+        if (filters.track === 'special') return isSpecialPlatoon || r.track === 'special';
+        if (filters.track === 'regular') return !isSpecialPlatoon && r.track !== 'special';
+        return true;
+      });
+    }
+
     if (records.length) results.push({ date: dateStr, records, stats: computeStats(records) });
   }
   return results;

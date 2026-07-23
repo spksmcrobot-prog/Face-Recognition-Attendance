@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>html, body { background-color: #f6faf8 !important; color: #17382a; }</style>
 <title>จัดการระบบ | ระบบเช็คชื่อ นศท.</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -463,7 +464,7 @@
     </div>
   </main>
 
-  <div id="toast" class="toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-3 rounded-2xl bg-white/95 backdrop-blur-xl px-5 py-3 text-sm font-bold text-slate-800 shadow-2xl border border-emerald-500/30 cursor-pointer" onclick="this.classList.remove('show')">
+  <div id="toast" class="toast fixed top-1/2 left-1/2 z-[99999] flex -translate-x-1/2 -translate-y-1/2 items-center gap-3 rounded-2xl bg-white/98 backdrop-blur-xl px-6 py-4 text-sm font-bold text-slate-800 shadow-2xl border border-emerald-500/30 cursor-pointer" onclick="this.classList.remove('show')">
     <span class="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 text-xs font-black text-emerald-700 shrink-0">✓</span>
     <span id="toastText" class="flex-1 font-bold text-slate-800">ดำเนินการสำเร็จ</span>
     <span class="text-slate-400 hover:text-slate-700 ml-2 font-black text-xs">✕</span>
@@ -612,41 +613,49 @@
           </div>
           
           <!-- Conditional Fields for Platoon / Company Leader -->
+          <div id="st-platoon-guide" class="sm:col-span-2 rounded-xl bg-emerald-50/90 border border-emerald-200 p-3.5 text-xs text-forest-900">
+            <div class="flex items-start gap-2.5">
+              <span class="text-lg shrink-0">💡</span>
+              <div>
+                <p class="font-extrabold text-forest-900 mb-0.5">คำแนะนำการกำหนดตำแหน่งหัวหน้าหมวด</p>
+                <p class="text-slate-600 font-medium leading-relaxed">
+                  กรุณาเลือก <b>ชั้นปีที่ดูแล (ปี 1 - 5)</b> และ <b>หมวดที่ดูแล</b> ให้สอดคล้องกัน:<br>
+                  • <b>หมวด 1 – 5 ปกติ</b> : สำหรับรับผิดชอบ นศท. ชาย<br>
+                  • <b>หมวด 1 – 5 พิเศษ</b> : สำหรับรับผิดชอบ นศท. หญิง
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div id="st-company-wrap">
-            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ชั้นปีที่ดูแล <span class="text-rose-500">*</span></label>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ชั้นปีที่ดูแล (ปี 1 - 5) <span class="text-rose-500">*</span></label>
             <select id="st-company" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
-              <option value="1">ชั้นปีที่ 1</option>
-              <option value="2">ชั้นปีที่ 2</option>
-              <option value="3">ชั้นปีที่ 3</option>
-              <option value="4">ชั้นปีที่ 4</option>
-              <option value="5">ชั้นปีที่ 5</option>
+              <option value="1">🎓 ชั้นปีที่ 1 (ปี 1)</option>
+              <option value="2">🎓 ชั้นปีที่ 2 (ปี 2)</option>
+              <option value="3">🎓 ชั้นปีที่ 3 (ปี 3)</option>
+              <option value="4">🎓 ชั้นปีที่ 4 (ปี 4)</option>
+              <option value="5">🎓 ชั้นปีที่ 5 (ปี 5)</option>
             </select>
           </div>
-          <div id="st-track-wrap" class="sm:col-span-2">
-            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">สายการฝึก / ประเภทกองร้อยที่ดูแล <span class="text-rose-500">*</span></label>
-            <select id="st-track" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
-              <option value="all">ทั้ง 2 สายการฝึก (ดูแลทั้งชายและหญิง)</option>
-              <option value="regular">🛡️ กองร้อยปกติ (นศท. ชายเท่านั้น)</option>
-              <option value="special">🎀 กองร้อยพิเศษ (นศท. หญิงเท่านั้น)</option>
-            </select>
-          </div>
+          <!-- Hidden track wrap -->
+          <input type="hidden" id="st-track" value="all">
           <div id="st-platoon-wrap">
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">หมวดที่ดูแล <span class="text-rose-500">*</span></label>
             <select id="st-platoon" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
               <option value="">-- เลือกหมวดที่ดูแล --</option>
-              <optgroup label="🛡️ หมวดปกติ (หัวหน้าหมวด - ชาย)">
-                <option value="1">หมวด 1 (ชาย)</option>
-                <option value="2">หมวด 2 (ชาย)</option>
-                <option value="3">หมวด 3 (ชาย)</option>
-                <option value="4">หมวด 4 (ชาย)</option>
-                <option value="5">หมวด 5 (ชาย)</option>
+              <optgroup label="🛡️ หมวดปกติ 1 - 5 (หัวหน้าหมวด - ชาย)">
+                <option value="1">หมวด 1 (ปกติ - นศท.ชาย)</option>
+                <option value="2">หมวด 2 (ปกติ - นศท.ชาย)</option>
+                <option value="3">หมวด 3 (ปกติ - นศท.ชาย)</option>
+                <option value="4">หมวด 4 (ปกติ - นศท.ชาย)</option>
+                <option value="5">หมวด 5 (ปกติ - นศท.ชาย)</option>
               </optgroup>
-              <optgroup label="🎀 หมวดพิเศษ (หัวหน้าหมวด - หญิง)">
-                <option value="พิเศษ 1">หมวดพิเศษ 1 (หญิง)</option>
-                <option value="พิเศษ 2">หมวดพิเศษ 2 (หญิง)</option>
-                <option value="พิเศษ 3">หมวดพิเศษ 3 (หญิง)</option>
-                <option value="พิเศษ 4">หมวดพิเศษ 4 (หญิง)</option>
-                <option value="พิเศษ 5">หมวดพิเศษ 5 (หญิง)</option>
+              <optgroup label="🎀 หมวดพิเศษ 1 - 5 (หัวหน้าหมวด - หญิง)">
+                <option value="พิเศษ 1">หมวด 1 พิเศษ (นศท.หญิง)</option>
+                <option value="พิเศษ 2">หมวด 2 พิเศษ (นศท.หญิง)</option>
+                <option value="พิเศษ 3">หมวด 3 พิเศษ (นศท.หญิง)</option>
+                <option value="พิเศษ 4">หมวด 4 พิเศษ (นศท.หญิง)</option>
+                <option value="พิเศษ 5">หมวด 5 พิเศษ (นศท.หญิง)</option>
               </optgroup>
             </select>
           </div>
@@ -1139,11 +1148,15 @@ function toggleStaffFields() {
   var role = document.getElementById('st-role').value;
   var needCompany = (role == '2' || role == '3');
   var needPlatoon = (role == '2');
-  var needTrack   = (role == '2' || role == '3');
 
   document.getElementById('st-company-wrap').style.display = needCompany ? 'block' : 'none';
   document.getElementById('st-platoon-wrap').style.display = needPlatoon ? 'block' : 'none';
-  document.getElementById('st-track-wrap').style.display   = needTrack   ? 'block' : 'none';
+
+  var trackWrap = document.getElementById('st-track-wrap');
+  if (trackWrap) trackWrap.style.display = 'none';
+
+  var guide = document.getElementById('st-platoon-guide');
+  if (guide) guide.style.display = (role == '2') ? 'block' : 'none';
 }
 
 // ─── Staff ────────────────────────────────────────────────────
@@ -1250,7 +1263,12 @@ async function saveStaff() {
     var role = parseInt(document.getElementById('st-role').value);
     var company = document.getElementById('st-company').value.trim();
     var platoon = document.getElementById('st-platoon').value.trim();
-    var track = document.getElementById('st-track').value;
+    
+    // Auto-derive track based on platoon assignment or role
+    var track = 'all';
+    if (role === 2 && platoon) {
+      track = platoon.includes('พิเศษ') ? 'special' : 'regular';
+    }
 
     if (stUid) {
       await db.collection(COLLECTIONS.USERS).doc(stUid).update({

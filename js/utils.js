@@ -201,18 +201,17 @@ function showToast(msg, type = null, duration = 2200) {
   if (!container) {
     container = document.createElement('div');
     container.id = 'toast-container';
-    container.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:999999;pointer-events:none;';
+    container.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:999999;pointer-events:none;display:flex;flex-direction:column;gap:10px;align-items:center;';
     document.body.appendChild(container);
   }
   const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
   const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.style.pointerEvents = 'auto';
+  toast.className = 'toast show';
+  toast.style.cssText = 'pointer-events:auto;background:rgba(255,255,255,0.98);color:#0f172a;border:1.5px solid rgba(21,154,97,0.3);box-shadow:0 20px 50px -10px rgba(0,0,0,0.18),0 0 25px rgba(21,154,97,0.15);border-radius:1.25rem;padding:0.9rem 1.4rem;font-weight:700;display:flex;align-items:center;gap:0.75rem;font-family:\'Prompt\',\'Kanit\',sans-serif;font-size:0.92rem;min-width:260px;max-width:420px;cursor:pointer;transition:all 0.25s ease;';
   toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.success}</span><span class="toast-msg">${msg}</span>`;
   toast.onclick = () => toast.remove();
   container.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add('show'));
-  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 250); }, duration);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'scale(0.9)'; setTimeout(() => toast.remove(), 250); }, duration);
 }
 
 // ─── SweetAlert2 Helper Wrappers ─────────────────────────────
@@ -272,6 +271,7 @@ function openModal(id) {
     if (!el.classList.contains('flex') && !el.classList.contains('grid') && !el.classList.contains('block')) {
       el.classList.add('flex');
     }
+    el.classList.add('items-center', 'justify-center');
     document.body.style.overflow = 'hidden';
   }
 }

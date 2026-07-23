@@ -2,15 +2,14 @@
 // midday.js — Mid-day Check Logic
 // ============================================================
 
-// ─── Get Active Rounds for Today ─────────────────────────────
-async function getTodayRounds() {
-  // ไม่ใช้ orderBy เพื่อหลีกเลี่ยงการต้องสร้าง Index
+// ─── Get Active Rounds for Date ─────────────────────────────
+async function getTodayRounds(dateStr = null) {
+  const targetDate = dateStr || today();
   const snap = await db.collection(COLLECTIONS.MIDDAY)
-                       .doc(today())
+                       .doc(targetDate)
                        .collection('rounds')
                        .get();
   const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  // เรียงลำดับใน JS แทน
   docs.sort((a, b) => {
     const at = a.createdAt ? (a.createdAt.seconds || 0) : 0;
     const bt = b.createdAt ? (b.createdAt.seconds || 0) : 0;
@@ -20,9 +19,10 @@ async function getTodayRounds() {
 }
 
 // ─── Create New Round (commander) ────────────────────────────
-async function createRound(createdBy, roundNumber) {
+async function createRound(createdBy, roundNumber, dateStr = null) {
+  const targetDate = dateStr || today();
   const ref = db.collection(COLLECTIONS.MIDDAY)
-                .doc(today())
+                .doc(targetDate)
                 .collection('rounds')
                 .doc();
   const num = parseInt(roundNumber);
@@ -30,7 +30,7 @@ async function createRound(createdBy, roundNumber) {
     roundNumber: num,
     createdBy,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    date: today(),
+    date: targetDate,
     open: true,
     stats: { total: 0, present: 0, mission: 0, absent: 0 }
   });
@@ -43,7 +43,7 @@ async function createRound(createdBy, roundNumber) {
       message: `ผู้ดูแลเปิดรอบเช็คยอดระหว่างวัน รอบที่ ${num} กรุณารายงานตัว`,
       roundId: ref.id,
       roundNumber: num,
-      date: today(),
+      date: targetDate,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: createdBy || ''
     });
@@ -55,9 +55,10 @@ async function createRound(createdBy, roundNumber) {
 }
 
 // ─── Close Round ─────────────────────────────────────────────
-async function closeRound(roundId) {
+async function closeRound(roundId, dateStr = null) {
+  const targetDate = dateStr || today();
   await db.collection(COLLECTIONS.MIDDAY)
-          .doc(today())
+          .doc(targetDate)
           .collection('rounds')
           .doc(roundId)
           .update({ 
@@ -67,9 +68,10 @@ async function closeRound(roundId) {
 }
 
 // ─── Submit Midday Check (student) ───────────────────────────
-async function submitMiddayCheck(roundId, uid, studentData, status, reasonOrLocation = '', faceVerified = false) {
+async function submitMiddayCheck(roundId, uid, studentData, status, reasonOrLocation = '', faceVerified = false, dateStr = null) {
+  const targetDate = dateStr || today();
   const roundRef = db.collection(COLLECTIONS.MIDDAY)
-                     .doc(today())
+                     .doc(targetDate)
                      .collection('rounds')
                      .doc(roundId);
 
@@ -104,9 +106,10 @@ async function submitMiddayCheck(roundId, uid, studentData, status, reasonOrLoca
 }
 
 // ─── Get Round Records (commander view) ──────────────────────
-async function getRoundRecords(roundId, filters = {}) {
+async function getRoundRecords(roundId, filters = {}, dateStr = null) {
+  const targetDate = dateStr || today();
   let query = db.collection(COLLECTIONS.MIDDAY)
-                .doc(today())
+                .doc(targetDate)
                 .collection('rounds')
                 .doc(roundId)
                 .collection('records');
@@ -116,9 +119,10 @@ async function getRoundRecords(roundId, filters = {}) {
 }
 
 // ─── Get Student's Check for a Round ─────────────────────────
-async function getMyMiddayCheck(roundId, uid) {
+async function getMyMiddayCheck(roundId, uid, dateStr = null) {
+  const targetDate = dateStr || today();
   const snap = await db.collection(COLLECTIONS.MIDDAY)
-                       .doc(today())
+                       .doc(targetDate)
                        .collection('rounds')
                        .doc(roundId)
                        .collection('records')
@@ -127,11 +131,80 @@ async function getMyMiddayCheck(roundId, uid) {
   return snap.exists ? snap.data() : null;
 }
 
+// ─── Delete Round (admin/commander) ─────────────────────────
+async function deleteRound(roundId, dateStr = null) {
+  const targetDate = dateStr || today();
+  const roundRef = db.collection(COLLECTIONS.MIDDAY)
+                     .doc(targetDate)
+                     .collection('rounds')
+                     .doc(roundId);
+
+  const recSnap = await roundRef.collection('records').get();
+  const batch = db.batch();
+  recSnap.docs.forEach(d => batch.delete(d.ref));
+  batch.delete(roundRef);
+  await batch.commit();
+}
+
+// ─── Delete Individual Record from Round ──────────────────────
+async function deleteRoundRecord(roundId, uid, dateStr = null) {
+  const targetDate = dateStr || today();
+  const roundRef = db.collection(COLLECTIONS.MIDDAY)
+                     .doc(targetDate)
+                     .collection('rounds')
+                     .doc(roundId);
+
+  await roundRef.collection('records').doc(uid).delete();
+
+  try {
+    const snap = await roundRef.collection('records').get();
+    const recs = snap.docs.map(d => d.data());
+    const stats = {
+      total: recs.length,
+      present: recs.filter(r => r.status === 'present').length,
+      mission: recs.filter(r => r.status === 'mission').length,
+      absent: recs.filter(r => r.status === 'absent').length
+    };
+    await roundRef.update({ stats });
+  } catch (e) {
+    console.warn('Failed to update stats after record deletion:', e);
+  }
+}
+
+// ─── Update Individual Record in Round ───────────────────────
+async function updateRoundRecord(roundId, uid, recordData, dateStr = null) {
+  const targetDate = dateStr || today();
+  const roundRef = db.collection(COLLECTIONS.MIDDAY)
+                     .doc(targetDate)
+                     .collection('rounds')
+                     .doc(roundId);
+
+  await roundRef.collection('records').doc(uid).set({
+    ...recordData,
+    uid,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  try {
+    const snap = await roundRef.collection('records').get();
+    const recs = snap.docs.map(d => d.data());
+    const stats = {
+      total: recs.length,
+      present: recs.filter(r => r.status === 'present').length,
+      mission: recs.filter(r => r.status === 'mission').length,
+      absent: recs.filter(r => r.status === 'absent').length
+    };
+    await roundRef.update({ stats });
+  } catch (e) {
+    console.warn('Failed to update stats after record update:', e);
+  }
+}
+
 // ─── Get Latest Open Round ───────────────────────────────────
-async function getLatestOpenRound() {
-  // ดึงทุก rounds แล้ว filter ใน JS แทน เพื่อไม่ต้องสร้าง Composite Index
+async function getLatestOpenRound(dateStr = null) {
+  const targetDate = dateStr || today();
   const snap = await db.collection(COLLECTIONS.MIDDAY)
-                       .doc(today())
+                       .doc(targetDate)
                        .collection('rounds')
                        .get();
   if (snap.empty) return null;

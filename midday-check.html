@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>html, body { background-color: #f6faf8 !important; color: #17382a; }</style>
 <title>เช็คยอดระหว่างวัน | ระบบเช็คชื่อ นศท.</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -175,10 +176,15 @@
           <div>
             <p class="mb-1 text-sm font-bold text-forest-600">จัดการรอบเช็คยอด</p>
             <h1 class="text-2xl font-extrabold tracking-tight text-forest-900">ตรวจเช็คยอดระหว่างวัน</h1>
-            <p class="mt-2 text-sm text-slate-500" id="cmd-date">--</p>
+            <div class="mt-2.5 flex items-center gap-2.5 flex-wrap">
+              <label class="text-xs font-extrabold text-forest-900">📅 เลือกดูย้อนหลัง:</label>
+              <input type="date" id="midday-date-picker" onchange="onMiddayDateChange(this.value)" class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-forest-900 outline-none focus:border-forest-600 shadow-xs">
+              <button onclick="onMiddayDateChange(today())" class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-forest-700 hover:bg-emerald-100 transition">วันนี้</button>
+            </div>
+            <p class="mt-1 text-xs text-slate-400 font-semibold" id="cmd-date">--</p>
           </div>
-          <button class="rounded-xl bg-forest-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700" id="new-round-btn" onclick="openNewRound()">
-            + เปิดรอบเช็คยอดใหม่
+          <button id="new-round-btn" onclick="openNewRound()" class="rounded-2xl bg-forest-600 hover:bg-forest-700 text-white font-extrabold px-4 py-2.5 text-xs transition shadow-md flex items-center gap-1.5 shrink-0">
+            <span class="text-base font-black">+</span> เปิดรอบเช็คยอดใหม่
           </button>
         </div>
 
@@ -192,14 +198,15 @@
     </div>
   </main>
 
-  <div id="toast" class="toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-xl bg-forest-900 px-4 py-3 text-sm font-bold text-white shadow-xl">
-    <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-400 text-[.65rem] text-forest-900">✓</span>
-    <span id="toastText">ดำเนินการสำเร็จ</span>
+  <div id="toast" class="toast fixed top-1/2 left-1/2 z-[99999] flex -translate-x-1/2 -translate-y-1/2 items-center gap-3 rounded-2xl bg-white/98 backdrop-blur-xl px-6 py-4 text-sm font-bold text-slate-800 shadow-2xl border border-emerald-500/30 cursor-pointer" onclick="this.classList.remove('show')">
+    <span class="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 text-xs font-black text-emerald-700 shrink-0">✓</span>
+    <span id="toastText" class="flex-1 font-bold text-slate-800">ดำเนินการสำเร็จ</span>
+    <span class="text-slate-400 hover:text-slate-700 ml-2 font-black text-xs">✕</span>
   </div>
 
   <!-- New Round Modal -->
-  <div class="fixed inset-0 z-50 hidden place-items-center bg-slate-950/45 p-4 backdrop-blur-sm" id="new-round-modal">
-    <div class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" id="new-round-modal">
+    <div class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl my-auto animate-enter">
       <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
         <div>
           <h2 class="font-bold text-forest-900">เปิดรอบเช็คยอดใหม่</h2>
@@ -221,8 +228,8 @@
   </div>
 
   <!-- Round Detail Modal -->
-  <div class="fixed inset-0 z-50 hidden place-items-center bg-slate-950/45 p-4 backdrop-blur-sm" id="detail-round-modal">
-    <div class="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col max-h-[88vh]">
+  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" id="detail-round-modal">
+    <div class="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col max-h-[88vh] my-auto animate-enter">
       <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 bg-emerald-50/50">
         <div>
           <h2 class="font-extrabold text-forest-900 text-lg" id="detail-modal-title">รายละเอียดการเช็คยอด รอบที่ --</h2>
@@ -252,27 +259,24 @@
       </div>
 
       <!-- Tab Bar -->
-      <div class="flex border-b border-slate-100 bg-white px-4 gap-1 pt-1" id="detail-tab-bar">
-        <button onclick="switchDetailTab('all')" id="tab-all" class="detail-tab px-4 py-2.5 text-xs font-bold text-forest-700 border-b-2 border-forest-600 -mb-px">
+      <div class="flex border-b border-slate-100 bg-white px-4 gap-1 pt-1 overflow-x-auto" id="detail-tab-bar">
+        <button onclick="switchDetailTab('all')" id="tab-all" class="detail-tab px-4 py-2.5 text-xs font-bold text-forest-700 border-b-2 border-forest-600 -mb-px shrink-0">
           📋 ทั้งหมด
         </button>
-        <button onclick="switchDetailTab('platoon')" id="tab-platoon" class="detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition">
-          🏢 แยกตามหมวด
+        <button onclick="switchDetailTab('present')" id="tab-present" class="detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition shrink-0">
+          🟢 อยู่ในแถว
         </button>
-        <button onclick="switchDetailTab('company')" id="tab-company" class="detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition">
-          🎓 แยกตามชั้นปี
+        <button onclick="switchDetailTab('mission')" id="tab-mission" class="detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition shrink-0">
+          🟡 ปฏิบัติภารกิจ (ไปไหน/ทำอะไร)
+        </button>
+        <button onclick="switchDetailTab('absent')" id="tab-absent" class="detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition shrink-0">
+          🔴 ไม่อยู่ / ขาด
         </button>
       </div>
 
       <!-- Filter / Search bar in Modal -->
       <div class="p-3 border-b border-slate-100 flex flex-wrap gap-2" id="detail-filter-bar">
-        <input type="text" id="detail-search-input" placeholder="🔍 ค้นหาชื่อ / รหัส นศท..." oninput="filterDetailRecords()" class="flex-1 min-w-[140px] rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold outline-none focus:border-forest-600">
-        <select id="detail-status-filter" onchange="filterDetailRecords()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-forest-900 outline-none">
-          <option value="">ทุกสถานะ</option>
-          <option value="present">🟢 อยู่ในแถว</option>
-          <option value="mission">🟡 ปฏิบัติภารกิจ</option>
-          <option value="absent">🔴 ไม่อยู่/ขาด</option>
-        </select>
+        <input type="text" id="detail-search-input" placeholder="🔍 ค้นหาชื่อ / รหัส นศท..." oninput="filterDetailRecords()" class="flex-1 min-w-[140px] rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold outline-none focus:border-forest-600">
         <select id="detail-platoon-filter" onchange="filterDetailRecords()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-forest-900 outline-none">
           <option value="">ทุกหมวด</option>
         </select>
@@ -529,24 +533,59 @@
   }
 
   // ─── Commander View ───────────────────────────────────────
-  async function loadCommanderView() {
+  var selectedMiddayDate = today();
+  var currentActiveRoundId = null;
+  var _nextRoundNum = 1;
+
+  function onMiddayDateChange(val) {
+    if (!val) return;
+    selectedMiddayDate = val;
+    loadCommanderView(val);
+  }
+
+  async function loadCommanderView(dateStr) {
+    if (!dateStr) dateStr = selectedMiddayDate || today();
+    selectedMiddayDate = dateStr;
+
+    var picker = document.getElementById('midday-date-picker');
+    if (picker && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) && picker.value !== dateStr) {
+      picker.value = dateStr;
+    }
+
+    document.getElementById('cmd-date').textContent = 'วันที่: ' + formatDateThai(dateStr);
+
+    // Hide "+ เปิดรอบเช็คยอดใหม่" button for Platoon Leaders (Role 2)
+    var newBtn = document.getElementById('new-round-btn');
+    if (newBtn) {
+      if (currentUser && currentUser.role === ROLES.PLATOON) {
+        newBtn.style.display = 'none';
+      } else {
+        newBtn.style.display = 'flex';
+      }
+    }
+
     var el = document.getElementById('rounds-list');
     el.innerHTML = `<div class="flex items-center justify-center p-8 text-slate-400 col-span-full"><svg class="h-8 w-8 animate-spin text-forest-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg></div>`;
     try {
-      var rounds = await getTodayRounds();
+      var rounds = await getTodayRounds(dateStr);
+      _nextRoundNum = (rounds ? rounds.length : 0) + 1;
+
       if (!rounds.length) {
+        var emptyMsg = currentUser && currentUser.role === ROLES.PLATOON
+          ? 'ยังไม่มีรอบเช็คยอดที่เปิดในขณะนี้'
+          : 'ยังไม่มีรอบเช็คยอด — กด "+ เปิดรอบเช็คยอดใหม่" ด้านบนเพื่อเริ่ม';
         el.innerHTML = `
           <div class="col-span-full card p-8 text-center">
-            <div class="text-4xl mb-3 opacity-50">🔔</div>
+            <div class="text-4xl mb-3 opacity-50">📭</div>
             <p class="text-forest-900 font-bold text-lg">ยังไม่มีรอบเช็คยอด</p>
-            <p class="text-slate-500 text-sm mt-1">กด "+ เปิดรอบเช็คยอดใหม่" เพื่อเริ่ม</p>
+            <p class="text-slate-500 text-xs mt-1">${formatDateThai(dateStr)} — ${emptyMsg}</p>
           </div>`;
         return;
       }
 
       // Calculate live records and stats for each round
       var roundsWithStats = await Promise.all(rounds.map(async r => {
-        var recs = await getRoundRecords(r.id).catch(() => []);
+        var recs = await getRoundRecords(r.id, {}, dateStr).catch(() => []);
         var stats = {
           total: recs.length,
           present: recs.filter(rec => rec.status === 'present').length,
@@ -556,7 +595,11 @@
         return { ...r, liveStats: stats };
       }));
 
-      el.innerHTML = roundsWithStats.map(r => `
+      el.innerHTML = roundsWithStats.map(r => {
+        const canClose = r.open && currentUser && currentUser.role !== ROLES.PLATOON;
+        const canDelete = currentUser && currentUser.role >= ROLES.BATTALION;
+
+        return `
         <div class="card p-5 relative overflow-hidden flex flex-col justify-between">
           ${r.open ? '<div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>' : '<div class="absolute top-0 left-0 w-1.5 h-full bg-slate-300"></div>'}
           <div>
@@ -576,21 +619,33 @@
               <div class="flex justify-between"><span class="text-slate-500">🔴 ไม่อยู่ / ขาด</span><span class="font-bold text-rose-600">${r.liveStats.absent} คน</span></div>
             </div>
           </div>
-          <div class="mt-5 pt-4 border-t border-slate-100 flex gap-2">
-            ${r.open 
+          <div class="mt-5 pt-4 border-t border-slate-100 flex gap-2 flex-wrap">
+            ${canClose 
               ? `<button class="flex-1 text-xs font-bold text-rose-600 hover:text-rose-700 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 transition border border-rose-200/60" onclick="closeRound('${r.id}')">ปิดรอบนี้</button>` 
+              : ''
+            }
+            ${canDelete 
+              ? `<button class="text-xs font-bold text-rose-600 hover:text-rose-700 py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 transition border border-rose-200/60" onclick="deleteMiddayRound('${r.id}')" title="ลบรอบนี้">🗑️ ลบรอบ</button>` 
               : ''
             }
             <button class="flex-1 text-xs font-bold text-forest-700 hover:text-forest-900 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition border border-emerald-200/60 flex items-center justify-center gap-1" onclick="viewRoundDetail('${r.id}')">📋 รายละเอียด</button>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     } catch(e) {
       el.innerHTML = `<div class="col-span-full p-4 text-rose-500 text-sm font-bold">เกิดข้อผิดพลาด: ${e.message}</div>`;
     }
   }
 
   function openNewRound() {
+    if (currentUser && currentUser.role === ROLES.PLATOON) {
+      showAlertPopup('ไม่มีสิทธิ์ดำเนินการ', 'หัวหน้าหมวดไม่มีสิทธิ์เปิดรอบเช็คยอด', 'warning');
+      return;
+    }
+    var inputEl = document.getElementById('round-number-input');
+    if (inputEl) {
+      inputEl.value = _nextRoundNum || 1;
+    }
     document.getElementById('new-round-modal').classList.remove('hidden');
     document.getElementById('new-round-modal').classList.add('grid');
   }
@@ -601,19 +656,27 @@
   }
 
   async function createNewRound() {
+    if (currentUser && currentUser.role === ROLES.PLATOON) {
+      showAlertPopup('ไม่มีสิทธิ์ดำเนินการ', 'หัวหน้าหมวดไม่มีสิทธิ์เปิดรอบเช็คยอด', 'warning');
+      return;
+    }
     var num = document.getElementById('round-number-input').value;
     if (!num) return;
     try {
-      await createRound(currentUser ? currentUser.uid : '', num);
-      showToast('เปิดรอบเช็คยอดสำเร็จ');
+      await createRound(currentUser ? currentUser.uid : '', num, selectedMiddayDate);
+      showToast('เปิดรอบเช็คยอดสำเร็จ', 'success');
       closeModal('new-round-modal');
-      loadCommanderView();
+      loadCommanderView(selectedMiddayDate);
     } catch(e) {
       showToast('เปิดรอบไม่สำเร็จ: ' + e.message, 'error');
     }
   }
 
   async function closeRound(roundId) {
+    if (currentUser && currentUser.role === ROLES.PLATOON) {
+      showAlertPopup('ไม่มีสิทธิ์ดำเนินการ', 'หัวหน้าหมวดไม่มีสิทธิ์ปิดรอบเช็คยอด', 'warning');
+      return;
+    }
     var confirmed = await showConfirmPopup(
       'ปิดรอบเช็คยอดระหว่างวัน?',
       'เมื่อปิดรอบแล้ว นศท. จะไม่สามารถรายงานตัวในรอบนี้ได้อีก',
@@ -624,7 +687,7 @@
     if (!confirmed) return;
     try {
       await db.collection(COLLECTIONS.MIDDAY)
-              .doc(today())
+              .doc(selectedMiddayDate || today())
               .collection('rounds')
               .doc(roundId)
               .update({
@@ -633,7 +696,30 @@
                 closedBy: currentUser ? currentUser.uid : ''
               });
       showToast('ปิดรอบเช็คยอดสำเร็จ', 'success');
-      loadCommanderView();
+      loadCommanderView(selectedMiddayDate);
+    } catch(e) {
+      showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+    }
+  }
+
+  async function deleteMiddayRound(roundId) {
+    if (!currentUser || currentUser.role < ROLES.BATTALION) {
+      showAlertPopup('ไม่มีสิทธิ์ดำเนินการ', 'เฉพาะแอดมินหรือผู้บังคับบัญชาเท่านั้นที่สามารถลบรอบได้', 'warning');
+      return;
+    }
+    var confirmed = await showConfirmPopup(
+      'ลบรอบเช็คยอด?',
+      'คุณต้องการลบรอบเช็คยอดนี้ออกจากระบบใช่หรือไม่?',
+      'ลบรอบ',
+      'ยกเลิก',
+      'warning'
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteRound(roundId, selectedMiddayDate);
+      showToast('ลบรอบเช็คยอดสำเร็จ', 'success');
+      loadCommanderView(selectedMiddayDate);
     } catch(e) {
       showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
     }
@@ -643,6 +729,7 @@
   var _currentDetailTab = 'all';
 
   async function viewRoundDetail(roundId) {
+    currentActiveRoundId = roundId;
     openModal('detail-round-modal');
     var titleEl = document.getElementById('detail-modal-title');
     var listEl  = document.getElementById('detail-modal-list');
@@ -652,25 +739,43 @@
 
     // Reset tabs
     _currentDetailTab = 'all';
-    document.getElementById('group-view-container').classList.add('hidden');
     document.getElementById('detail-modal-list').classList.remove('hidden');
     document.getElementById('detail-filter-bar').classList.remove('hidden');
-    ['all','platoon','company'].forEach(t => {
+    ['all','present','mission','absent'].forEach(t => {
       var btn = document.getElementById('tab-' + t);
-      if (t === 'all') {
-        btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-forest-700 border-b-2 border-forest-600 -mb-px';
-      } else {
-        btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition';
+      if (btn) {
+        if (t === 'all') {
+          btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-forest-700 border-b-2 border-forest-600 -mb-px shrink-0';
+        } else {
+          btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition shrink-0';
+        }
       }
     });
 
     try {
-      var roundSnap = await db.collection(COLLECTIONS.MIDDAY).doc(today()).collection('rounds').doc(roundId).get();
+      var roundSnap = await db.collection(COLLECTIONS.MIDDAY).doc(selectedMiddayDate || today()).collection('rounds').doc(roundId).get();
       var roundData = roundSnap.exists ? roundSnap.data() : null;
       var roundNum  = roundData ? roundData.roundNumber : '';
       titleEl.textContent = 'รายละเอียดการเช็คยอด รอบที่ ' + roundNum;
 
-      _currentDetailRecords = await getRoundRecords(roundId);
+      _currentDetailRecords = await getRoundRecords(roundId, {}, selectedMiddayDate);
+
+      // Filter strictly by user's assigned platoon, company, or gender track
+      if (currentUser.role === ROLES.PLATOON) {
+        _currentDetailRecords = _currentDetailRecords.filter(r => {
+          const matchCompany = !currentUser.company || String(r.company || '').trim() === String(currentUser.company || '').trim();
+          const matchPlatoon = !currentUser.platoon || String(r.platoon || '').trim() === String(currentUser.platoon || '').trim();
+          return matchCompany && matchPlatoon;
+        });
+      } else if (currentUser.role === ROLES.COMPANY) {
+        _currentDetailRecords = _currentDetailRecords.filter(r => {
+          const matchCompany = !currentUser.company || String(r.company || '').trim() === String(currentUser.company || '').trim();
+          const isSpecial = String(r.platoon || '').includes('พิเศษ');
+          if (currentUser.track === 'regular') return matchCompany && !isSpecial;
+          if (currentUser.track === 'special') return matchCompany && isSpecial;
+          return matchCompany;
+        });
+      }
 
       var presentCount = _currentDetailRecords.filter(r => r.status === 'present').length;
       var missionCount = _currentDetailRecords.filter(r => r.status === 'mission').length;
@@ -686,29 +791,26 @@
       var years    = [...new Set(_currentDetailRecords.map(r => r.company).filter(Boolean))].sort();
 
       var plSel = document.getElementById('detail-platoon-filter');
-      plSel.innerHTML = '<option value="">ทุกหมวด</option>' + platoons.map(p => `<option value="${p}">หมวด ${p}</option>`).join('');
+      if (plSel) plSel.innerHTML = '<option value="">ทุกหมวด</option>' + platoons.map(p => `<option value="${p}">หมวด ${p}</option>`).join('');
 
       var yrSel = document.getElementById('detail-year-filter');
-      yrSel.innerHTML = '<option value="">ทุกชั้นปี</option>' + years.map(y => `<option value="${y}">ชั้นปี ${y}</option>`).join('');
+      if (yrSel) yrSel.innerHTML = '<option value="">ทุกชั้นปี</option>' + years.map(y => `<option value="${y}">ชั้นปี ${y}</option>`).join('');
 
-      document.getElementById('detail-search-input').value  = '';
-      document.getElementById('detail-status-filter').value  = '';
+      var qInput = document.getElementById('detail-search-input');
+      if (qInput) qInput.value = '';
+
+      var stSel = document.getElementById('detail-status-filter');
+      if (stSel) stSel.value = '';
 
       if (currentUser.role === ROLES.PLATOON) {
-        if (currentUser.platoon) plSel.value = currentUser.platoon;
-        plSel.disabled = true;
-        if (currentUser.company) yrSel.value = currentUser.company;
-        yrSel.disabled = true;
+        if (plSel) { plSel.value = currentUser.platoon || ''; plSel.disabled = true; plSel.style.display = 'none'; }
+        if (yrSel) { yrSel.value = currentUser.company || ''; yrSel.disabled = true; yrSel.style.display = 'none'; }
       } else if (currentUser.role === ROLES.COMPANY) {
-        plSel.value = '';
-        plSel.disabled = false;
-        if (currentUser.company) yrSel.value = currentUser.company;
-        yrSel.disabled = true;
+        if (plSel) { plSel.value = ''; plSel.disabled = false; plSel.style.display = 'block'; }
+        if (yrSel) { yrSel.value = currentUser.company || ''; yrSel.disabled = true; yrSel.style.display = 'none'; }
       } else {
-        plSel.value = '';
-        plSel.disabled = false;
-        yrSel.value = '';
-        yrSel.disabled = false;
+        if (plSel) { plSel.value = ''; plSel.disabled = false; plSel.style.display = 'block'; }
+        if (yrSel) { yrSel.value = ''; yrSel.disabled = false; yrSel.style.display = 'block'; }
       }
 
       renderDetailRecords(_currentDetailRecords);
@@ -719,113 +821,26 @@
 
   function switchDetailTab(tab) {
     _currentDetailTab = tab;
-    ['all','platoon','company'].forEach(t => {
+    ['all','present','mission','absent'].forEach(t => {
       var btn = document.getElementById('tab-' + t);
-      if (t === tab) {
-        btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-forest-700 border-b-2 border-forest-600 -mb-px';
-      } else {
-        btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition';
+      if (btn) {
+        if (t === tab) {
+          btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-forest-700 border-b-2 border-forest-600 -mb-px shrink-0';
+        } else {
+          btn.className = 'detail-tab px-4 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-forest-700 transition shrink-0';
+        }
       }
     });
 
-    var groupContainer = document.getElementById('group-view-container');
-    var listContainer  = document.getElementById('detail-modal-list');
-    var filterBar      = document.getElementById('detail-filter-bar');
+    var stSel = document.getElementById('detail-status-filter');
+    if (stSel) stSel.value = (tab === 'all') ? '' : tab;
 
-    if (tab === 'all') {
-      groupContainer.classList.add('hidden');
-      listContainer.classList.remove('hidden');
-      filterBar.classList.remove('hidden');
-      filterDetailRecords();
-    } else {
-      groupContainer.classList.remove('hidden');
-      listContainer.classList.add('hidden');
-      filterBar.classList.add('hidden');
-      renderGroupedView(_currentDetailRecords, tab);
-    }
-  }
-
-  function renderGroupedView(records, groupBy) {
-    var container = document.getElementById('group-view-container');
-    var groupLabel = groupBy === 'platoon' ? 'หมวด' : 'ชั้นปี';
-    var groupKey   = groupBy === 'platoon' ? 'platoon' : 'company';
-
-    // Build groups
-    var groups = {};
-    records.forEach(r => {
-      var key = r[groupKey] || 'ไม่ระบุ';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(r);
-    });
-
-    var sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'th'));
-
-    if (!sortedKeys.length) {
-      container.innerHTML = `<div class="text-center py-8 text-slate-400 font-bold text-sm">ไม่มีข้อมูล</div>`;
-      return;
-    }
-
-    container.innerHTML = sortedKeys.map(key => {
-      var grp       = groups[key];
-      var present   = grp.filter(r => r.status === 'present').length;
-      var mission   = grp.filter(r => r.status === 'mission').length;
-      var absent    = grp.filter(r => r.status === 'absent').length;
-      var total     = grp.length;
-      var missionPeople = grp.filter(r => r.status === 'mission' && r.detail);
-      var absentPeople  = grp.filter(r => r.status === 'absent' && r.detail);
-
-      var nameRows = grp.map((r, i) => {
-        var stColor = r.status === 'present' ? 'text-emerald-700' : r.status === 'mission' ? 'text-amber-700' : 'text-rose-600';
-        var stIcon  = r.status === 'present' ? '🟢' : r.status === 'mission' ? '🟡' : '🔴';
-        var stLabel = r.status === 'present' ? 'อยู่ในแถว' : r.status === 'mission' ? 'ปฏิบัติภารกิจ' : 'ไม่อยู่/ขาด';
-        var detailPart = r.detail
-          ? `<span class="ml-1 text-[0.63rem] font-semibold px-1.5 py-0.5 rounded ${ r.status === 'mission' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-rose-50 text-rose-600 border border-rose-200' }">${r.detail}</span>`
-          : '';
-        var faceTag = r.faceVerified ? '<span class="text-[0.6rem] text-emerald-500 ml-1 font-bold">✓AI</span>' : '';
-        return `
-          <div class="flex items-center gap-2.5 py-2 border-b border-slate-50 last:border-0">
-            <span class="text-slate-400 text-[0.65rem] font-bold w-5 text-center">${i+1}</span>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-1 flex-wrap">
-                <span class="text-xs font-bold text-forest-900">${r.name || r.studentId || '--'}${faceTag}</span>
-                <span class="text-[0.6rem] text-slate-400 font-mono">${r.studentId || ''}</span>
-              </div>
-              <div class="flex items-center gap-1 mt-0.5 flex-wrap">
-                <span class="${stColor} text-[0.65rem] font-bold">${stIcon} ${stLabel}</span>
-                ${detailPart}
-              </div>
-            </div>
-            <span class="text-[0.65rem] text-slate-400 font-semibold shrink-0">${r.timestamp ? formatTime(r.timestamp) : '--'}</span>
-          </div>
-        `;
-      }).join('');
-
-      return `
-        <div class="mb-4 rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
-          <!-- Group Header -->
-          <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-100">
-            <div class="flex items-center gap-2">
-              <span class="text-base font-extrabold text-forest-900">${groupLabel} ${key}</span>
-              <span class="text-[0.65rem] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">รายงานตัว ${total} คน</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="text-[0.65rem] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full px-2 py-0.5">🟢 ${present}</span>
-              <span class="text-[0.65rem] font-extrabold bg-amber-50 text-amber-700 border border-amber-100 rounded-full px-2 py-0.5">🟡 ${mission}</span>
-              <span class="text-[0.65rem] font-extrabold bg-rose-50 text-rose-600 border border-rose-100 rounded-full px-2 py-0.5">🔴 ${absent}</span>
-            </div>
-          </div>
-          <!-- Name List -->
-          <div class="px-4 py-1">
-            ${nameRows}
-          </div>
-        </div>
-      `;
-    }).join('');
+    filterDetailRecords();
   }
 
   function filterDetailRecords() {
     var q   = (document.getElementById('detail-search-input')?.value || '').toLowerCase().trim();
-    var st  = document.getElementById('detail-status-filter')?.value  || '';
+    var st  = _currentDetailTab !== 'all' ? _currentDetailTab : '';
     var pl  = document.getElementById('detail-platoon-filter')?.value || '';
     var yr  = document.getElementById('detail-year-filter')?.value    || '';
 
@@ -843,55 +858,84 @@
 
   function renderDetailRecords(records) {
     var listEl = document.getElementById('detail-modal-list');
-    if (!records.length) {
-      listEl.innerHTML = `<div class="text-center py-8 text-slate-400 font-bold text-sm">ไม่พบข้อมูลการรายงานตัว</div>`;
+    if (!records || !records.length) {
+      listEl.innerHTML = `<div class="text-center py-8 text-slate-400 font-bold text-sm">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>`;
       return;
     }
 
     document.getElementById('detail-record-count').textContent = records.length + ' คน';
 
-    // Sort: present → mission → absent
+    // Sort order: mission -> absent -> present
     var sorted = [...records].sort((a, b) => {
-      var order = { present: 0, mission: 1, absent: 2 };
+      var order = { mission: 0, absent: 1, present: 2 };
       return (order[a.status] ?? 9) - (order[b.status] ?? 9);
     });
 
+    const isAdmin = currentUser && currentUser.role >= ROLES.BATTALION;
+
     listEl.innerHTML = `
-      <div class="space-y-2">
+      <div class="space-y-2.5">
         ${sorted.map((r, idx) => {
           var faceTag  = r.faceVerified ? `<span class="text-[0.6rem] text-emerald-500 font-bold ml-1">✓ AI</span>` : '';
           var timeStr  = r.timestamp ? formatTime(r.timestamp) : '--';
-          var stBg     = r.status === 'present' ? 'bg-emerald-50 border-emerald-100' : r.status === 'mission' ? 'bg-amber-50/60 border-amber-100' : 'bg-rose-50/60 border-rose-100';
+          var stBg     = r.status === 'present' ? 'bg-emerald-50/60 border-emerald-100' : r.status === 'mission' ? 'bg-amber-50/80 border-amber-200' : 'bg-rose-50/80 border-rose-200';
           var stBadge  = r.status === 'present'
             ? `<span class="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2 py-1 text-[0.68rem] font-extrabold text-emerald-800">🟢 อยู่ในแถว</span>`
             : r.status === 'mission'
             ? `<span class="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-2 py-1 text-[0.68rem] font-extrabold text-amber-800">🟡 ปฏิบัติภารกิจ</span>`
             : `<span class="inline-flex items-center gap-1 rounded-lg bg-rose-100 px-2 py-1 text-[0.68rem] font-extrabold text-rose-700">🔴 ไม่อยู่/ขาด</span>`;
 
-          // Destination / reason block
+          var detailInfo = r.detail || r.note || r.reason || '';
           var destBlock = '';
-          if (r.detail && r.status === 'mission') {
-            destBlock = `<div class="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1 text-[0.7rem] font-semibold text-amber-800"><span>📍</span><span>${r.detail}</span></div>`;
-          } else if (r.detail && r.status === 'absent') {
-            destBlock = `<div class="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-rose-50 border border-rose-200 px-2.5 py-1 text-[0.7rem] font-semibold text-rose-700"><span>📝</span><span>${r.detail}</span></div>`;
+          if (r.status === 'mission') {
+            destBlock = `<div class="mt-2 flex items-start gap-1.5 rounded-xl bg-amber-100/70 border border-amber-300/80 px-3 py-1.5 text-xs font-bold text-amber-950">
+              <span class="shrink-0 text-sm">📍</span>
+              <div>
+                <span class="font-extrabold text-amber-950">ไปไหน / ทำอะไร:</span> 
+                <span class="font-semibold text-amber-900">${escapeHtml(detailInfo || 'ไม่ได้ระบุสถานที่/ภารกิจ')}</span>
+              </div>
+            </div>`;
+          } else if (r.status === 'absent') {
+            destBlock = `<div class="mt-2 flex items-start gap-1.5 rounded-xl bg-rose-100/70 border border-rose-300/80 px-3 py-1.5 text-xs font-bold text-rose-950">
+              <span class="shrink-0 text-sm">📝</span>
+              <div>
+                <span class="font-extrabold text-rose-950">สาเหตุ / เหตุผล:</span> 
+                <span class="font-semibold text-rose-900">${escapeHtml(detailInfo || 'ไม่ได้ระบุสาเหตุ')}</span>
+              </div>
+            </div>`;
+          } else if (detailInfo) {
+            destBlock = `<div class="mt-2 flex items-start gap-1.5 rounded-xl bg-slate-100 border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700">
+              <span class="shrink-0 text-sm">💬</span>
+              <div>
+                <span class="font-semibold">${escapeHtml(detailInfo)}</span>
+              </div>
+            </div>`;
           }
 
+          var adminActionButtons = isAdmin ? `
+            <div class="mt-2 pt-2 border-t border-slate-200/60 flex items-center justify-end gap-1.5">
+              <button onclick="editMiddayRecord('${r.uid}')" class="rounded-lg bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 text-[0.65rem] font-extrabold hover:bg-amber-100 transition flex items-center gap-1">✏️ แก้ไขสถานะ</button>
+              <button onclick="deleteMiddayRecord('${r.uid}')" class="rounded-lg bg-rose-50 text-rose-600 border border-rose-200 px-2.5 py-1 text-[0.65rem] font-extrabold hover:bg-rose-100 transition flex items-center gap-1">🗑️ ลบ</button>
+            </div>
+          ` : '';
+
           return `
-            <div class="flex items-start gap-3 rounded-xl border ${stBg} p-3">
-              <span class="shrink-0 text-slate-300 text-xs font-bold mt-0.5 w-5 text-center">${idx + 1}</span>
+            <div class="flex items-start gap-3 rounded-2xl border ${stBg} p-3.5 shadow-xs transition hover:shadow-md">
+              <span class="shrink-0 text-slate-400 text-xs font-bold mt-0.5 w-5 text-center">${idx + 1}</span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between gap-2 flex-wrap">
                   <div>
-                    <span class="text-xs font-extrabold text-forest-900">${r.name || r.studentId || '--'}${faceTag}</span>
-                    <span class="ml-1.5 text-[0.65rem] text-slate-400 font-mono">${r.studentId || ''}</span>
+                    <span class="text-sm font-extrabold text-forest-900">${escapeHtml(r.name || r.studentId || '--')}${faceTag}</span>
+                    <span class="ml-1.5 text-xs text-slate-400 font-mono font-semibold">${escapeHtml(r.studentId || '')}</span>
                   </div>
                   <div class="flex items-center gap-2">
                     ${stBadge}
-                    <span class="text-[0.65rem] text-slate-400 font-semibold">${timeStr}</span>
+                    <span class="text-xs text-slate-400 font-semibold">🕒 ${timeStr}</span>
                   </div>
                 </div>
-                <div class="mt-1 text-[0.65rem] text-slate-400">ปีที่ ${r.company || '--'} · หมวด ${r.platoon || '--'}</div>
+                <div class="mt-1 text-xs text-slate-500 font-medium">🎓 ชั้นปีที่ ${escapeHtml(r.company || '--')} · 🛡️ หมวด ${escapeHtml(r.platoon || '--')}</div>
                 ${destBlock}
+                ${adminActionButtons}
               </div>
             </div>
           `;

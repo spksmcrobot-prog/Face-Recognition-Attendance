@@ -1131,7 +1131,9 @@ input:checked + .slider::before {
 .nav-item.active {
   background-color: var(--color-forest-50) !important;
   color: var(--color-forest-700) !important;
-  font-weight: 700 !important;
+  font-weight: 800 !important;
+  border-left: 4px solid var(--color-forest-600) !important;
+  box-shadow: 0 1px 3px rgba(21, 154, 97, 0.08);
 }
 
 .nav-item.active svg {
@@ -1748,9 +1750,9 @@ body, .app-container, main {
 }
 
 .swal2-backdrop-show {
-  background: rgba(15, 30, 22, 0.45) !important;
-  backdrop-filter: blur(8px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(8px) saturate(140%) !important;
+  background: rgba(15, 23, 42, 0.20) !important;
+  backdrop-filter: blur(6px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(140%) !important;
 }
 
 .swal2-container.swal2-backdrop-hide {
@@ -1767,7 +1769,7 @@ body, .app-container, main {
   padding: 2rem !important;
   background: #ffffff !important;
   border: 1px solid rgba(21, 154, 97, 0.2) !important;
-  box-shadow: 0 25px 60px -10px rgba(11, 31, 23, 0.25), 0 0 35px rgba(21, 154, 97, 0.18) !important;
+  box-shadow: 0 25px 60px -10px rgba(11, 31, 23, 0.18), 0 0 35px rgba(21, 154, 97, 0.15) !important;
 }
 
 .swal2-center-unified-popup {
@@ -1780,7 +1782,7 @@ body, .app-container, main {
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1.5px solid rgba(21, 154, 97, 0.3) !important;
-  box-shadow: 0 30px 70px -12px rgba(11, 31, 23, 0.35), 0 0 45px rgba(21, 154, 97, 0.22) !important;
+  box-shadow: 0 30px 70px -12px rgba(11, 31, 23, 0.22), 0 0 45px rgba(21, 154, 97, 0.18) !important;
 }
 
 .swal2-center-unified-popup .swal2-title {
@@ -1796,14 +1798,14 @@ body, .app-container, main {
 
 .swal2-popup.swal2-toast {
   font-family: 'Prompt', 'Kanit', sans-serif !important;
-  background: rgba(15, 40, 28, 0.95) !important;
-  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: #0f172a !important;
   border-radius: 1.25rem !important;
-  padding: 0.85rem 1.35rem !important;
-  border: 1px solid rgba(52, 211, 153, 0.3) !important;
-  box-shadow: 0 15px 40px -8px rgba(0, 0, 0, 0.3), 0 0 25px rgba(16, 185, 129, 0.25) !important;
+  padding: 0.9rem 1.4rem !important;
+  border: 1.5px solid rgba(21, 154, 97, 0.3) !important;
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.15), 0 0 25px rgba(21, 154, 97, 0.18) !important;
   min-width: 260px !important;
-  max-width: 400px !important;
+  max-width: 420px !important;
   display: flex !important;
   align-items: center !important;
   gap: 0.75rem !important;
@@ -1811,9 +1813,9 @@ body, .app-container, main {
 }
 
 .swal2-popup.swal2-toast .swal2-title {
-  font-size: 0.9rem !important;
+  font-size: 0.92rem !important;
   font-weight: 700 !important;
-  color: #ffffff !important;
+  color: #0f172a !important;
   margin: 0 !important;
   padding: 0 !important;
   line-height: 1.4 !important;

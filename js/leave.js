@@ -145,3 +145,35 @@ async function cancelLeaveRequest(leaveId, uid) {
   if (snap.data().status !== LEAVE_STATUS.PENDING) throw new Error('ไม่สามารถยกเลิกหลังการอนุมัติแล้ว');
   await db.collection(COLLECTIONS.LEAVE).doc(leaveId).update({ status: 'cancelled' });
 }
+
+// ─── Delete Leave Request (admin/commander/student) ───────────
+async function deleteLeaveRequest(leaveId) {
+  const snap = await db.collection(COLLECTIONS.LEAVE).doc(leaveId).get();
+  if (!snap.exists) throw new Error('ไม่พบคำขอลา');
+  const leaveData = snap.data();
+
+  // Delete leave document
+  await db.collection(COLLECTIONS.LEAVE).doc(leaveId).delete();
+
+  // Clean up attendance records if leave was marked
+  if (leaveData.uid && leaveData.startDate && leaveData.endDate) {
+    try {
+      const start = strToDate(leaveData.startDate);
+      const end = strToDate(leaveData.endDate);
+      const batch = db.batch();
+      let count = 0;
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
+        const dateStr = dateToStr(d);
+        const ref = db.collection(COLLECTIONS.ATTENDANCE)
+                      .doc(dateStr)
+                      .collection('records')
+                      .doc(leaveData.uid);
+        batch.delete(ref);
+        count++;
+      }
+      if (count > 0) await batch.commit();
+    } catch(e) {
+      console.warn('Failed to cleanup attendance records for deleted leave:', e);
+    }
+  }
+}

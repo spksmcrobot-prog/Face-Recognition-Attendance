@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>html, body { background-color: #f6faf8 !important; color: #17382a; }</style>
 <title>รายงานสรุป | ระบบเช็คชื่อ นศท.</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -258,15 +259,15 @@
     </div>
   </main>
 
-  <div id="toast" class="toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-3 rounded-2xl bg-white/95 backdrop-blur-xl px-5 py-3 text-sm font-bold text-slate-800 shadow-2xl border border-emerald-500/30 cursor-pointer print:hidden" onclick="this.classList.remove('show')">
+  <div id="toast" class="toast fixed top-1/2 left-1/2 z-[99999] flex -translate-x-1/2 -translate-y-1/2 items-center gap-3 rounded-2xl bg-white/98 backdrop-blur-xl px-6 py-4 text-sm font-bold text-slate-800 shadow-2xl border border-emerald-500/30 cursor-pointer print:hidden" onclick="this.classList.remove('show')">
     <span class="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 text-xs font-black text-emerald-700 shrink-0">✓</span>
     <span id="toastText" class="flex-1 font-bold text-slate-800">ดำเนินการสำเร็จ</span>
     <span class="text-slate-400 hover:text-slate-700 ml-2 font-black text-xs">✕</span>
   </div>
 
   <!-- School Modal -->
-  <div class="fixed inset-0 z-50 hidden place-items-center bg-slate-950/45 p-4 backdrop-blur-sm print:hidden" id="school-modal">
-    <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col">
+  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm print:hidden" id="school-modal">
+    <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col my-auto animate-enter">
       <div class="flex items-center justify-between border-b border-emerald-950/5 px-5 py-4 shrink-0 bg-slate-50">
         <h3 class="font-bold text-forest-900" id="school-modal-title">เพิ่มสถานศึกษา</h3>
         <button class="icon-btn !h-8 !w-8 bg-white shadow-sm border border-slate-200" onclick="closeModal('school-modal')">✕</button>
@@ -439,6 +440,18 @@ async function generateReport() {
       platoon: document.getElementById('filter-platoon').value.trim() || undefined,
       school:  document.getElementById('filter-school').value || undefined,
     };
+
+    if (currentUser) {
+      if (currentUser.role === ROLES.PLATOON) {
+        if (currentUser.company) filters.company = currentUser.company;
+        if (currentUser.platoon) filters.platoon = currentUser.platoon;
+        if (currentUser.track) filters.track = currentUser.track;
+      } else if (currentUser.role === ROLES.COMPANY) {
+        if (currentUser.company) filters.company = currentUser.company;
+        if (currentUser.track) filters.track = currentUser.track;
+      }
+    }
+
     Object.keys(filters).forEach(k => filters[k] === undefined && delete filters[k]);
 
     reportData = await generateSummary(
