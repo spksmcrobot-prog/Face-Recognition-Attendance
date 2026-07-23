@@ -165,7 +165,7 @@ async function checkLocationInGeofence() {
 // ─── Toast Notifications ─────────────────────────────────────
 // Leave and Round Status are defined in firebase-config.js
 
-function showToast(msg, type = null, duration = 2000) {
+function showToast(msg, type = null, duration = 2200) {
   // ── Smart Icon Detection ────────────────────────────────────
   if (!type || type === 'info') {
     if (/(สำเร็จ|เรียบร้อย|อนุมัติ|ดึงพิกัด|บันทึก|เพิ่ม|ลบ|เข้าสู่ระบบ|เช็คชื่อ|เช็คเข้า|เช็คออก|ส่ง)/.test(msg)
@@ -181,24 +181,19 @@ function showToast(msg, type = null, duration = 2000) {
   }
 
   if (typeof window.Swal !== 'undefined') {
-    // ── Use SweetAlert2 native Toast (NO backdrop, NO page lock!) ──
-    const SwalToast = Swal.mixin({
-      toast: true,
-      position: 'top',
+    return Swal.fire({
+      position: 'center',
+      icon: type || 'success',
+      title: msg,
       showConfirmButton: false,
-      timer: duration || 2500,
-      timerProgressBar: false,
-      stopTimerOnMouseEnter: false,
-      didOpen: (toast) => {
-        toast.style.cursor = 'pointer';
-        toast.onclick = () => Swal.close();
+      timer: duration || 2200,
+      timerProgressBar: true,
+      showCloseButton: true,
+      allowOutsideClick: true,
+      customClass: {
+        popup: 'swal2-center-unified-popup'
       }
     });
-    SwalToast.fire({
-      icon: type || 'success',
-      title: msg
-    });
-    return;
   }
 
   // ── Fallback: plain DOM toast ──────────────────────────────
@@ -224,13 +219,18 @@ function showToast(msg, type = null, duration = 2000) {
 function showAlertPopup(title, text = '', icon = 'info') {
   if (typeof window.Swal !== 'undefined') {
     return Swal.fire({
+      position: 'center',
       title: title,
       html: text,
       icon: icon,
       confirmButtonText: 'ตกลง',
+      confirmButtonColor: '#10b981',
       showCloseButton: true,
       allowOutsideClick: true,
-      allowEscapeKey: true
+      allowEscapeKey: true,
+      customClass: {
+        popup: 'swal2-center-unified-popup'
+      }
     });
   } else {
     alert(`${title}\n${text}`);
@@ -241,6 +241,7 @@ function showAlertPopup(title, text = '', icon = 'info') {
 function showConfirmPopup(title, text = '', confirmText = 'ตกลง', cancelText = 'ยกเลิก', icon = 'question') {
   if (typeof window.Swal !== 'undefined') {
     return Swal.fire({
+      position: 'center',
       title: title,
       html: text,
       icon: icon,
@@ -248,9 +249,14 @@ function showConfirmPopup(title, text = '', confirmText = 'ตกลง', cancel
       showCloseButton: true,
       confirmButtonText: confirmText,
       cancelButtonText: cancelText,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#64748b',
       reverseButtons: true,
       allowOutsideClick: true,
-      allowEscapeKey: true
+      allowEscapeKey: true,
+      customClass: {
+        popup: 'swal2-center-unified-popup'
+      }
     }).then(result => result.isConfirmed);
   } else {
     return Promise.resolve(confirm(title + '\n' + text));

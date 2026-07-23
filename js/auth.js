@@ -420,11 +420,7 @@ async function handleSwitchAddAccountSubmit(event) {
     window.location.href = role === 1 ? 'student.html' : 'dashboard.html';
   } catch (err) {
     console.error(err);
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: err.message || 'รหัสผ่านหรือบัญชีไม่ถูกต้อง' });
-    } else {
-      alert('เข้าสู่ระบบไม่สำเร็จ: ' + err.message);
-    }
+    showAlertPopup('เข้าสู่ระบบไม่สำเร็จ', err.message || 'รหัสผ่านหรือบัญชีไม่ถูกต้อง', 'error');
     hideLoading(btn);
   }
 }
@@ -455,11 +451,7 @@ async function switchAccount(studentId, birthdate) {
     window.location.href = role === 1 ? 'student.html' : 'dashboard.html';
   } catch (err) {
     console.error(err);
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({ icon: 'error', title: 'สลับบัญชีไม่สำเร็จ', text: err.message || 'กรุณาลองใหม่อีกครั้ง' });
-    } else {
-      alert('สลับบัญชีไม่สำเร็จ: ' + err.message);
-    }
+    showAlertPopup('สลับบัญชีไม่สำเร็จ', err.message || 'กรุณาลองใหม่อีกครั้ง', 'error');
   }
 }
 

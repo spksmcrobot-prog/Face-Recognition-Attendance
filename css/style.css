@@ -1770,6 +1770,26 @@ body, .app-container, main {
   box-shadow: 0 25px 60px -10px rgba(11, 31, 23, 0.25), 0 0 35px rgba(21, 154, 97, 0.18) !important;
 }
 
+.swal2-center-unified-popup {
+  font-family: 'Prompt', 'Kanit', sans-serif !important;
+  position: relative !important;
+  pointer-events: auto !important;
+  border-radius: 1.75rem !important;
+  padding: 1.75rem 2rem !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1.5px solid rgba(21, 154, 97, 0.3) !important;
+  box-shadow: 0 30px 70px -12px rgba(11, 31, 23, 0.35), 0 0 45px rgba(21, 154, 97, 0.22) !important;
+}
+
+.swal2-center-unified-popup .swal2-title {
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  color: #0a4d2e !important;
+  margin-top: 0.5rem !important;
+}
+
 .swal2-popup:not(.swal2-toast) {
   padding: 2rem !important;
 }

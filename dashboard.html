@@ -836,7 +836,7 @@
           showPlatoonDetails(activeModalGroupKey);
         }
       } catch (e) {
-        alert('เกิดข้อผิดพลาดในการแก้ไขสถานะ: ' + e.message);
+        showToast('เกิดข้อผิดพลาดในการแก้ไขสถานะ: ' + e.message, 'error');
       }
     }
 
@@ -854,21 +854,21 @@
             byCommander: true,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
-          showToast('เช็คชื่อเข้าเรียนสำเร็จ (โดยหัวหน้าหมวด)');
+          showToast('เช็คชื่อเข้าเรียนสำเร็จ (โดยหัวหน้าหมวด)', 'success');
         } else if (type === 'checkOut') {
           await ref.set({
             checkOutTime: nowTime,
             byCommander: true,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
-          showToast('เช็คชื่อออกสำเร็จ (โดยหัวหน้าหมวด)');
+          showToast('เช็คชื่อออกสำเร็จ (โดยหัวหน้าหมวด)', 'success');
         }
         await loadCommanderData(currentUser, dateStr);
         if (activeModalGroupKey && commanderGroups[activeModalGroupKey]) {
           showPlatoonDetails(activeModalGroupKey);
         }
       } catch (e) {
-        alert('เกิดข้อผิดพลาด: ' + e.message);
+        showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
       }
     }
 
@@ -877,7 +877,8 @@
       const records = commanderGroups[activeModalGroupKey].records;
       const dateStr = selectedCmdDate || dateToStr();
 
-      if (!confirm(`ยืนยันเช็คชื่อเข้าเรียนตอนเช้าสำหรับ นศท. ทั้งหมดใน ${activeModalGroupKey} (โดยไม่ต้องสแกนใบหน้า)?`)) return;
+      const confirmed = await showConfirmPopup('ยืนยันเช็คชื่อเข้าเรียนทั้งหมวด?', `เช็คชื่อเข้าเรียนตอนเช้าสำหรับ นศท. ทั้งหมดใน ${activeModalGroupKey} (โดยไม่ต้องสแกนใบหน้า)?`, 'ยืนยันเช็คชื่อ', 'ยกเลิก', 'question');
+      if (!confirmed) return;
 
       try {
         const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -900,13 +901,13 @@
           }
         });
         await batch.commit();
-        showToast('เช็คชื่อเข้าเรียนทั้งหมวดเรียบร้อย!');
+        showToast('เช็คชื่อเข้าเรียนทั้งหมวดเรียบร้อย!', 'success');
         await loadCommanderData(currentUser, dateStr);
         if (activeModalGroupKey && commanderGroups[activeModalGroupKey]) {
           showPlatoonDetails(activeModalGroupKey);
         }
       } catch (e) {
-        alert('เกิดข้อผิดพลาด: ' + e.message);
+        showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
       }
     }
 
@@ -915,7 +916,8 @@
       const records = commanderGroups[activeModalGroupKey].records;
       const dateStr = selectedCmdDate || dateToStr();
 
-      if (!confirm(`ยืนยันเช็คชื่อออก (เลิกฝึก) สำหรับ นศท. ทั้งหมดใน ${activeModalGroupKey}?`)) return;
+      const confirmed = await showConfirmPopup('ยืนยันเช็คชื่อออกทั้งหมวด?', `เช็คชื่อออก (เลิกฝึก) สำหรับ นศท. ทั้งหมดใน ${activeModalGroupKey}?`, 'ยืนยันเช็คชื่อออก', 'ยกเลิก', 'question');
+      if (!confirmed) return;
 
       try {
         const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -932,13 +934,13 @@
           }
         });
         await batch.commit();
-        showToast('เช็คชื่อออกทั้งหมวดเรียบร้อย!');
+        showToast('เช็คชื่อออกทั้งหมวดเรียบร้อย!', 'success');
         await loadCommanderData(currentUser, dateStr);
         if (activeModalGroupKey && commanderGroups[activeModalGroupKey]) {
           showPlatoonDetails(activeModalGroupKey);
         }
       } catch (e) {
-        alert('เกิดข้อผิดพลาด: ' + e.message);
+        showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
       }
     }
 
