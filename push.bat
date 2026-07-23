@@ -14,6 +14,13 @@ if not exist %GIT_PATH% (
     set GIT_PATH=git
 )
 
+:: Auto check and init git if not exists
+if not exist ".git" (
+    echo [INFO] Initializing git repository...
+    %GIT_PATH% init
+    %GIT_PATH% branch -M main
+)
+
 :: Stage all files
 echo Staging all changes...
 %GIT_PATH% add .

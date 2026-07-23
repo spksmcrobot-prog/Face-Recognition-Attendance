@@ -14,6 +14,13 @@ if %errorlevel% neq 0 (
     goto end
 )
 
+:: Auto check and init git if not exists
+if not exist ".git" (
+    echo [INFO] เริ่มต้น Git Repository...
+    git init
+    git branch -M main
+)
+
 :: Step 1: Stage all changes
 echo [1/3] กำลังเตรียมไฟล์ที่แก้ไข (Staging changes)...
 git add .
