@@ -575,13 +575,14 @@
     </div>
   </div>
 
-  <!-- Add Staff Modal -->
+  <!-- Add / Edit Staff Modal -->
   <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/65 p-4 sm:p-6 backdrop-blur-md overflow-y-auto" id="add-staff-modal">
     <div class="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] my-auto animate-enter">
+      <input type="hidden" id="st-uid" value="">
       <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0 bg-gradient-to-r from-emerald-50/60 via-slate-50 to-white">
         <div class="flex items-center gap-2.5">
           <span class="text-xl">🎖</span>
-          <h3 class="font-extrabold text-slate-800 text-base sm:text-lg">เพิ่มเจ้าหน้าที่ / ครูฝึก</h3>
+          <h3 class="font-extrabold text-slate-800 text-base sm:text-lg" id="st-modal-title">เพิ่มเจ้าหน้าที่ / ครูฝึก</h3>
         </div>
         <button class="h-9 w-9 grid place-items-center rounded-xl bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition shadow-sm" onclick="closeModal('add-staff-modal')">✕</button>
       </div>
@@ -605,9 +606,9 @@
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ชื่อ-นามสกุล <span class="text-rose-500">*</span></label>
             <input id="st-name" placeholder="ชื่อ-นามสกุล" required class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
           </div>
-          <div class="sm:col-span-2">
+          <div class="sm:col-span-2" id="st-birth-wrap">
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">รหัสผ่านเริ่มต้น (วันเกิด) <span class="text-rose-500">*</span></label>
-            <input id="st-birth" placeholder="เช่น 15/01/2005 หรือ 123456" required class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+            <input id="st-birth" placeholder="เช่น 15/01/2005 หรือ 123456" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
           </div>
           
           <!-- Conditional Fields for Platoon / Company Leader -->
@@ -1159,7 +1160,7 @@ async function loadStaff() {
             <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">ชื่อ / รหัส</th>
             <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">บทบาท</th>
             <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">ความรับผิดชอบ</th>
-            <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider text-right">สถานะ</th>
+            <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider text-right">จัดการ</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-emerald-950/5">
@@ -1181,10 +1182,14 @@ async function loadStaff() {
               ${s.role === 3 ? `ปี ${escapeHtml(s.company||'-')} (${s.track === 'regular' ? '🛡️ กองร้อยปกติ (ชาย)' : (s.track === 'special' ? '🎀 กองร้อยพิเศษ (หญิง)' : 'ทุกกองร้อย')})` : 
                 (s.role === 2 ? `ปี ${escapeHtml(s.company||'-')} / ${String(s.platoon||'').includes('พิเศษ') ? '🎀 หมวดพิเศษ ' + escapeHtml(s.platoon) + ' (หญิง)' : '🛡️ หมวดปกติ ' + escapeHtml(s.platoon) + ' (ชาย)'}` : 'ทั้งหมด')}
             </td>
-            <td class="px-4 py-3 text-right">
-              <button onclick="toggleActive('${s.id}',${s.active!==false})" class="rounded-lg px-2.5 py-1.5 text-[0.65rem] font-bold transition ${s.active!==false ? 'bg-rose-50 text-rose-600 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}">
-                ${s.active!==false ? '🔒 ปิดใช้' : '🔓 เปิดใช้'}
-              </button>
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              <div class="flex items-center justify-end gap-1.5">
+                <button onclick="openEditStaffModal('${s.id}')" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[0.65rem] font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition">✏️ แก้ไข</button>
+                <button onclick="toggleActive('${s.id}',${s.active!==false})" class="rounded-lg px-2.5 py-1.5 text-[0.65rem] font-bold transition ${s.active!==false ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}">
+                  ${s.active!==false ? '🔒 ระงับ' : '🔓 เปิดใช้'}
+                </button>
+                <button onclick="deleteStaffAccount('${s.id}', '${escapeHtml(s.name||'')}')" class="rounded-lg bg-rose-50 px-2.5 py-1.5 text-[0.65rem] font-bold text-rose-600 hover:bg-rose-100 transition">🗑️ ลบ</button>
+              </div>
             </td>
           </tr>`).join('')}
         </tbody>
@@ -1194,9 +1199,13 @@ async function loadStaff() {
 }
 
 function openAddStaffModal() {
+  document.getElementById('st-uid').value = '';
+  document.getElementById('st-modal-title').textContent = 'เพิ่มเจ้าหน้าที่ / ครูฝึก';
   document.getElementById('st-id').value = '';
+  document.getElementById('st-id').disabled = false;
   document.getElementById('st-name').value = '';
   document.getElementById('st-birth').value = '';
+  document.getElementById('st-birth-wrap').style.display = 'block';
   document.getElementById('st-company').value = '1';
   document.getElementById('st-platoon').value = '';
   document.getElementById('st-track').value = 'all';
@@ -1205,25 +1214,92 @@ function openAddStaffModal() {
   openModal('add-staff-modal'); 
 }
 
+async function openEditStaffModal(uid) {
+  if (!uid) return;
+  try {
+    var snap = await db.collection(COLLECTIONS.USERS).doc(uid).get();
+    if (!snap.exists) return;
+    var s = snap.data();
+
+    document.getElementById('st-uid').value = uid;
+    document.getElementById('st-modal-title').textContent = 'แก้ไขข้อมูลเจ้าหน้าที่';
+    document.getElementById('st-id').value = s.studentId || '';
+    document.getElementById('st-id').disabled = true;
+    document.getElementById('st-name').value = s.name || '';
+    document.getElementById('st-birth').value = '';
+    document.getElementById('st-birth-wrap').style.display = 'none';
+    document.getElementById('st-role').value = s.role || '3';
+    document.getElementById('st-company').value = s.company || '1';
+    document.getElementById('st-platoon').value = s.platoon || '';
+    document.getElementById('st-track').value = s.track || 'all';
+
+    toggleStaffFields();
+    openModal('add-staff-modal');
+  } catch(e) {
+    showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+  }
+}
+
 async function saveStaff() {
+  var stUid = document.getElementById('st-uid').value;
   var btn = document.getElementById('save-staff-btn');
   showLoading(btn, 'กำลังบันทึก...');
+
   try {
-    await adminCreateUser({
-      studentId: document.getElementById('st-id').value.trim(),
-      name:      document.getElementById('st-name').value.trim(),
-      birthdate: document.getElementById('st-birth').value,
-      role:      parseInt(document.getElementById('st-role').value),
-      company:   document.getElementById('st-company').value.trim(),
-      platoon:   document.getElementById('st-platoon').value.trim(),
-      track:     document.getElementById('st-track').value,
-    });
+    var name = document.getElementById('st-name').value.trim();
+    var role = parseInt(document.getElementById('st-role').value);
+    var company = document.getElementById('st-company').value.trim();
+    var platoon = document.getElementById('st-platoon').value.trim();
+    var track = document.getElementById('st-track').value;
+
+    if (stUid) {
+      await db.collection(COLLECTIONS.USERS).doc(stUid).update({
+        name: name,
+        role: role,
+        company: company,
+        platoon: platoon,
+        track: track,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      showToast('แก้ไขข้อมูลเจ้าหน้าที่เรียบร้อยแล้ว', 'success');
+    } else {
+      await adminCreateUser({
+        studentId: document.getElementById('st-id').value.trim(),
+        name: name,
+        birthdate: document.getElementById('st-birth').value,
+        role: role,
+        company: company,
+        platoon: platoon,
+        track: track,
+      });
+      showToast('เพิ่มเจ้าหน้าที่สำเร็จ', 'success');
+    }
+
     closeModal('add-staff-modal');
-    showToast('เพิ่มเจ้าหน้าที่สำเร็จ');
     loadStaff();
   } catch(e) {
     showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  } finally {
     hideLoading(btn);
+  }
+}
+
+async function deleteStaffAccount(uid, name) {
+  var confirmed = await showConfirmPopup(
+    'ยืนยันการลบบัญชีเจ้าหน้าที่?',
+    'คุณกำลังจะลบบัญชี "' + name + '" ออกจากระบบ การกระทำนี้ไม่สามารถย้อนกลับได้',
+    'ลบบัญชี',
+    'ยกเลิก',
+    'warning'
+  );
+  if (!confirmed) return;
+
+  try {
+    await db.collection(COLLECTIONS.USERS).doc(uid).delete();
+    showToast('ลบบัญชีเจ้าหน้าที่เรียบร้อยแล้ว', 'success');
+    loadStaff();
+  } catch(e) {
+    showAlertPopup('เกิดข้อผิดพลาด', 'ไม่สามารถลบบัญชีได้: ' + e.message, 'error');
   }
 }
 
