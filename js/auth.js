@@ -30,9 +30,21 @@ async function login(studentId, birthdate) {
 
   for (const email of uniqueEmails) {
     try {
-      return await auth.signInWithEmailAndPassword(email, password);
+      const cred = await auth.signInWithEmailAndPassword(email, password);
+      if (cred && cred.user) {
+        const uSnap = await db.collection(COLLECTIONS.USERS).doc(cred.user.uid).get();
+        if (uSnap.exists) {
+          const uData = uSnap.data();
+          if (uData.disabled === true || uData.status === 'disabled' || uData.status === 'suspended') {
+            await auth.signOut();
+            throw new Error('บัญชีผู้ใช้งานนี้ถูกระงับการใช้งาน กรุณาติดต่อแอดมินระบบ');
+          }
+        }
+      }
+      return cred;
     } catch (err) {
       lastError = err;
+      if (err.message && err.message.includes('ถูกระงับการใช้งาน')) throw err;
       if (err.code !== 'auth/user-not-found' && err.code !== 'auth/wrong-password' && err.code !== 'auth/invalid-login-credentials') {
         throw err;
       }
@@ -44,7 +56,12 @@ async function login(studentId, birthdate) {
 
 // ─── Logout ─────────────────────────────────────────────────
 async function logout() {
-  await auth.signOut();
+  try {
+    sessionStorage.clear();
+    if (typeof auth !== 'undefined' && auth.signOut) {
+      await auth.signOut().catch(() => {});
+    }
+  } catch (e) {}
   window.location.href = 'index.html';
 }
 
@@ -55,7 +72,13 @@ async function getCurrentUser() {
       if (!user) { resolve(null); return; }
       const snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
       if (!snap.exists) { resolve(null); return; }
-      resolve({ uid: user.uid, ...snap.data() });
+      const uData = snap.data();
+      if (uData.disabled === true || uData.status === 'disabled' || uData.status === 'suspended') {
+        await auth.signOut();
+        resolve(null);
+        return;
+      }
+      resolve({ uid: user.uid, ...uData });
     });
   });
 }
@@ -88,13 +111,11 @@ async function createStudentAccount(studentData) {
   // Save profile to Firestore
   await db.collection(COLLECTIONS.USERS).doc(uid).set({
     studentId, name, role: role || ROLES.STUDENT,
-    company, platoon, school, center,
-    year, program, nationalId, birthdate,
-    faceDescriptor: null,
-    profilePhotoUrl: '',
-    email,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    active: true,
+    company: company || '', platoon: platoon || '',
+    school: school || '', center: center || '',
+    year: year || '', program: program || '',
+    nationalId: nationalId || '', birthdate: birthdate || '',
+    email: email, createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 
   return uid;
@@ -109,7 +130,6 @@ async function saveFaceDescriptor(uid, descriptor) {
 }
 
 // ─── Render User Info in Topbar ─────────────────────────────
-// ─── Render User Info in Topbar ─────────────────────────────
 function renderTopbarUser(user) {
   const el = document.getElementById('topbar-user');
   if (!el || !user) return;
@@ -118,37 +138,38 @@ function renderTopbarUser(user) {
   const roleName = ROLE_NAMES[userRole] || 'นักศึกษาวิชาทหาร';
 
   el.innerHTML = `
-    <div class="flex items-center gap-2 rounded-xl border border-emerald-950/5 bg-white py-1.5 pl-1.5 pr-2.5 cursor-pointer" id="user-avatar" title="${escapeHtml(name)}">
+    <div class="flex items-center gap-2 rounded-xl border border-emerald-950/5 bg-white py-1.5 pl-1.5 pr-2.5 cursor-pointer hover:bg-forest-50 transition" id="user-avatar" title="${escapeHtml(name)}">
       <div class="grid h-7 w-7 place-items-center rounded-lg bg-forest-100 text-[.62rem] font-black text-forest-700">
         ${initials(name)}
       </div>
       <span class="hidden text-xs font-bold text-forest-900 sm:block">${escapeHtml(name)}</span>
     </div>
-    <div class="hidden" id="user-menu" style="
-      position:absolute;top:52px;right:0;min-width:200px;
+    <div class="hidden shadow-2xl" id="user-menu" style="
+      position:absolute;top:52px;right:0;min-width:210px;
       background:white;border:1px solid #e8f0eb;
-      border-radius:1.15rem;padding:8px;z-index:200;box-shadow:0 12px 40px rgba(20,66,46,.08);color:#17382a;
+      border-radius:1.15rem;padding:8px;z-index:999;box-shadow:0 12px 40px rgba(20,66,46,.12);color:#17382a;
     ">
       <div style="padding:12px 12px 10px;border-bottom:1px solid #e8f0eb;margin-bottom:6px;">
-        <div class="font-bold text-sm">${escapeHtml(name)}</div>
-        <div class="text-xs text-slate-500">${roleName}</div>
-        <div class="text-xs text-slate-500">${user.studentId || ''}</div>
+        <div class="font-bold text-sm text-forest-900">${escapeHtml(name)}</div>
+        <div class="text-xs text-forest-600 font-semibold mt-0.5">${roleName}</div>
+        <div class="text-[10px] text-slate-400 font-mono mt-0.5">${user.studentId || ''}</div>
       </div>
-      <button onclick="openSwitchAccountModal()" class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:text-forest-700 w-full mb-1 text-left">
+      <button onclick="document.getElementById('user-menu')?.classList.add('hidden'); openSwitchAccountModal();" class="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-forest-50 hover:text-forest-700 rounded-xl w-full mb-1 text-left">
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 110-8 4 4 0 010 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
         สลับบัญชี
       </button>
-      <button onclick="logout()" class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:text-red-500 w-full text-left border-t border-slate-50 pt-2 mt-1">
+      <button onclick="logout()" class="flex items-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 rounded-xl w-full text-left border-t border-slate-100 pt-2 mt-1">
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 00-2-2h-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         ออกจากระบบ
       </button>
     </div>
   `;
-  document.getElementById('user-avatar')?.addEventListener('click', () => {
+  document.getElementById('user-avatar')?.addEventListener('click', (e) => {
+    e.stopPropagation();
     document.getElementById('user-menu')?.classList.toggle('hidden');
   });
   document.addEventListener('click', e => {
-    if (!el.contains(e.target)) document.getElementById('user-menu')?.classList.add('hidden');
+    if (el && !el.contains(e.target)) document.getElementById('user-menu')?.classList.add('hidden');
   });
 }
 
@@ -159,14 +180,12 @@ function renderSidebar(user) {
   const userRole = user.role || ROLES.STUDENT;
 
   const icons = {
-    dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>',
-    attendance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="8" stroke-width="2"/><path d="M12 8v4l3 2" stroke-width="2" stroke-linecap="round"/></svg>',
-    midday: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M12 3v18" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="8" stroke-width="2"/></svg>',
-    leave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 3v4a1 1 0 001 1h4M5 3h9l5 5v13H5a1 1 0 01-1-1V4a1 1 0 011-1zM8 13h8M8 17h6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18M7 15l3-4 3 2 4-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    team: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    reports: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19V5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1zM8 16v-3m4 3V8m4 8v-5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    approval: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 12l2 2 4-4M12 22a10 10 0 100-20 10 10 0 000 20z" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>',
+    attendance:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    reports:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 20V10M12 20V4M6 20v-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    leave:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    approval:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    team:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 110-8 4 4 0 010 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3" stroke-width="2"/><path d="M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 00-1.88-.34 1.7 1.7 0 00-1.04 1.56V20.3h-3v-.08A1.7 1.7 0 0010.66 18.66a1.7 1.7 0 00-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 007 15a1.7 1.7 0 00-1.56-1.04H5.3v-3h.14A1.7 1.7 0 007 9.92a1.7 1.7 0 00-.34-1.88l-.06-.06 2.12-2.12.06.06a1.7 1.7 0 001.88.34A1.7 1.7 0 0011.7 4.7v-.08h3v.08a1.7 1.7 0 001.04 1.56 1.7 1.7 0 001.88-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 00-.34 1.88 1.7 1.7 0 001.56 1.04h.08v3h-.08A1.7 1.7 0 0019.4 15z" stroke-width="1.5" stroke-linejoin="round"/></svg>'
   };
 

@@ -566,11 +566,19 @@
         
         let allStudentsInScope = [];
         if (user.role === ROLES.PLATOON) {
+          const filterWrap = document.getElementById('platoon-type-filter-wrap');
+          if (filterWrap) filterWrap.classList.add('hidden');
+
           let sQuery = db.collection(COLLECTIONS.USERS).where('role', '==', ROLES.STUDENT);
           if (user.company) sQuery = sQuery.where('company', '==', user.company);
-          if (user.platoon) sQuery = sQuery.where('platoon', '==', user.platoon);
+          if (user.platoon) sQuery = sQuery.where('platoon', '==', String(user.platoon).trim());
           const sSnap = await sQuery.get();
-          allStudentsInScope = sSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+          allStudentsInScope = sSnap.docs
+            .map(d => ({ uid: d.id, ...d.data() }))
+            .filter(s => String(s.platoon || '').trim() === String(user.platoon || '').trim());
+        } else {
+          const filterWrap = document.getElementById('platoon-type-filter-wrap');
+          if (filterWrap) filterWrap.classList.remove('hidden');
         }
 
         const recMap = new Map(records.map(r => [r.uid || r.id, r]));
