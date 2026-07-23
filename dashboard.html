@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ระบบเช็คชื่อ นศท. | หน้าหลัก</title>
+  <title>ระบบเช็คชื่อ นศท.</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -28,8 +28,7 @@
         class="h-10 w-10 object-contain rounded-xl drop-shadow-md">
       <div>
         <p class="text-[1.05rem] font-bold tracking-tight text-forest-900">รด. Check</p>
-        <p class="text-[.62rem] font-bold text-forest-700">ศูนย์ฝึกย่อยโรงเรียนสมเด็จพิทยาคม</p>
-        <p class="text-[.58rem] font-semibold text-slate-400">📍 สนามฝึก รด. ขอนแก่น</p>
+        <p class="text-[.68rem] font-medium text-slate-400">ศูนย์ฝึกย่อยโรงเรียนสมเด็จพิทยาคม</p>
       </div>
     </div>
     <nav id="sidebar-nav" class="space-y-1"></nav>
@@ -101,8 +100,8 @@
             </div>
             <div
               class="flex items-center gap-2 rounded-xl border border-emerald-100 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-500">
-              <span class="status-dot bg-emerald-500"></span> <span id="dash-location">พื้นที่ฝึก: สนามฝึก รด.
-                ขอนแก่น</span>
+              <span class="status-dot bg-emerald-500"></span> <span
+                id="dash-location">ศูนย์ฝึกย่อยโรงเรียนสมเด็จพิทยาคม</span>
             </div>
           </div>
 
@@ -250,24 +249,34 @@
           <!-- Commander Content -->
           <div id="commander-content" class="hidden">
             <div class="mt-5 card overflow-hidden">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-emerald-950/5 px-5 py-4 sm:px-6 gap-3">
+              <div
+                class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-emerald-950/5 px-5 py-4 sm:px-6 gap-3">
                 <div>
                   <h2 class="font-bold text-forest-900" id="cmd-table-title">สรุปยอดกำลังพลประจำวัน</h2>
                   <p class="mt-1 text-xs text-slate-400" id="cmd-date">--</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                   <!-- Date Picker for Past History -->
-                  <div class="flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-forest-900 shadow-xs">
+                  <div
+                    class="flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-forest-900 shadow-xs">
                     <span class="text-slate-400">📅</span>
-                    <input type="date" id="cmd-date-picker" onchange="onCommanderDateChange(this.value)" class="bg-transparent text-xs font-bold text-forest-900 outline-none cursor-pointer">
+                    <input type="date" id="cmd-date-picker" onchange="onCommanderDateChange(this.value)"
+                      class="bg-transparent text-xs font-bold text-forest-900 outline-none cursor-pointer">
                   </div>
                   <!-- Platoon Type Filter for Commanders -->
-                  <div id="platoon-type-filter-wrap" class="flex items-center rounded-xl bg-slate-100 p-1 border border-slate-200">
-                    <button onclick="setPlatoonTypeFilter('all', this)" class="platoon-type-btn rounded-lg px-3 py-1 text-xs font-bold bg-white text-forest-900 shadow-xs transition">ทั้งหมด</button>
-                    <button onclick="setPlatoonTypeFilter('regular', this)" class="platoon-type-btn rounded-lg px-3 py-1 text-xs font-bold text-slate-500 transition">🛡️ หมวดปกติ (ชาย)</button>
-                    <button onclick="setPlatoonTypeFilter('special', this)" class="platoon-type-btn rounded-lg px-3 py-1 text-xs font-bold text-slate-500 transition">🎀 หมวดพิเศษ (หญิง)</button>
+                  <div id="platoon-type-filter-wrap"
+                    class="flex items-center rounded-xl bg-slate-100 p-1 border border-slate-200">
+                    <button onclick="setPlatoonTypeFilter('all', this)"
+                      class="platoon-type-btn rounded-lg px-3 py-1 text-xs font-bold bg-white text-forest-900 shadow-xs transition">ทั้งหมด</button>
+                    <button onclick="setPlatoonTypeFilter('regular', this)"
+                      class="platoon-type-btn rounded-lg px-3 py-1 text-xs font-bold text-slate-500 transition">🛡️
+                      หมวดปกติ (ชาย)</button>
+                    <button onclick="setPlatoonTypeFilter('special', this)"
+                      class="platoon-type-btn rounded-lg px-3 py-1 text-xs font-bold text-slate-500 transition">🎀
+                      หมวดพิเศษ (หญิง)</button>
                   </div>
-                  <a href="reports.html" class="text-xs font-bold text-forest-600 hover:text-forest-700 ml-2">ดูรายงานฉบับเต็ม</a>
+                  <a href="reports.html"
+                    class="text-xs font-bold text-forest-600 hover:text-forest-700 ml-2">ดูรายงานฉบับเต็ม</a>
                 </div>
               </div>
               <div class="overflow-x-auto">
@@ -342,13 +351,16 @@
       </div>
 
       <!-- Batch Platoon Check-In / Check-Out Actions Bar -->
-      <div class="px-6 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0 gap-2 overflow-x-auto">
+      <div
+        class="px-6 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0 gap-2 overflow-x-auto">
         <span class="text-xs font-extrabold text-forest-900 shrink-0">⚡ เช็คชื่อยกหมวด (ไม่ต้องสแกนหน้า):</span>
         <div class="flex items-center gap-2">
-          <button onclick="batchMarkPlatoonCheckIn()" class="rounded-xl bg-forest-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-forest-700 transition shrink-0 flex items-center gap-1">
+          <button onclick="batchMarkPlatoonCheckIn()"
+            class="rounded-xl bg-forest-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-forest-700 transition shrink-0 flex items-center gap-1">
             <span>☀️</span> เช็คเข้าเรียนทั้งหมวด
           </button>
-          <button onclick="batchMarkPlatoonCheckOut()" class="rounded-xl bg-amber-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-amber-700 transition shrink-0 flex items-center gap-1">
+          <button onclick="batchMarkPlatoonCheckOut()"
+            class="rounded-xl bg-amber-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-amber-700 transition shrink-0 flex items-center gap-1">
             <span>🌙</span> เช็คชื่อออกทั้งหมวด
           </button>
         </div>
@@ -430,7 +442,7 @@
         loadStudentData(user, dateStr);
       } else {
         document.getElementById('dash-title').textContent = 'ศูนย์ควบคุมกำลังพล';
-        document.getElementById('dash-subtitle').textContent = 'ภาพรวมการเข้าฝึกของ ' + roleName + ' · ศูนย์ฝึกย่อยโรงเรียนสมเด็จพิทยาคม (สนามฝึก รด. ขอนแก่น)';
+        document.getElementById('dash-subtitle').textContent = 'ภาพรวมการเข้าฝึกของ ' + roleName + ' · ศูนย์ฝึกย่อยโรงเรียนสมเด็จพิทยาคม';
         document.getElementById('commander-content').classList.remove('hidden');
         loadCommanderData(user, dateStr);
       }
@@ -564,7 +576,7 @@
             leaveMap.set(l.uid, l);
           }
         });
-        
+
         let allStudentsInScope = [];
         if (user.role === ROLES.PLATOON) {
           const filterWrap = document.getElementById('platoon-type-filter-wrap');
@@ -692,7 +704,7 @@
           const g = commanderGroups[key];
           const pct = g.total ? Math.round((g.present / g.total) * 100) : 0;
           const isSpecial = String(g.platoon || key).includes('พิเศษ');
-          const typeBadge = isSpecial 
+          const typeBadge = isSpecial
             ? `<span class="ml-2 rounded-full bg-pink-50 border border-pink-200 px-2.5 py-0.5 text-[0.65rem] font-extrabold text-pink-700">🎀 หมวดพิเศษ (หญิง)</span>`
             : `<span class="ml-2 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-[0.65rem] font-extrabold text-blue-700">🛡️ หมวดปกติ (ชาย)</span>`;
 
@@ -801,10 +813,10 @@
           <!-- Action Buttons (No Face Scan Required) -->
           <div class="flex flex-wrap items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100">
             <span class="text-[0.65rem] font-bold text-slate-400 mr-1 pl-1">จัดการ:</span>
-            <button onclick="individualCheckInOut('${targetUid}', 'checkIn')" class="px-2 py-0.5 text-[0.65rem] font-bold rounded ${r.status==='present' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'}">☀️ เข้า</button>
+            <button onclick="individualCheckInOut('${targetUid}', 'checkIn')" class="px-2 py-0.5 text-[0.65rem] font-bold rounded ${r.status === 'present' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'}">☀️ เข้า</button>
             <button onclick="individualCheckInOut('${targetUid}', 'checkOut')" class="px-2 py-0.5 text-[0.65rem] font-bold rounded ${r.checkOutTime ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-amber-50 hover:text-amber-700'}">🌙 ออก</button>
-            <button onclick="quickUpdateStatus('${targetUid}', 'leave')" class="px-2 py-0.5 text-[0.65rem] font-bold rounded ${r.status==='leave' ? 'bg-blue-600 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-700'}">ลา</button>
-            <button onclick="quickUpdateStatus('${targetUid}', 'absent')" class="px-2 py-0.5 text-[0.65rem] font-bold rounded ${r.status==='absent' ? 'bg-rose-600 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-rose-50 hover:text-rose-700'}">ขาด</button>
+            <button onclick="quickUpdateStatus('${targetUid}', 'leave')" class="px-2 py-0.5 text-[0.65rem] font-bold rounded ${r.status === 'leave' ? 'bg-blue-600 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-700'}">ลา</button>
+            <button onclick="quickUpdateStatus('${targetUid}', 'absent')" class="px-2 py-0.5 text-[0.65rem] font-bold rounded ${r.status === 'absent' ? 'bg-rose-600 text-white shadow-xs' : 'bg-white text-slate-600 hover:bg-rose-50 hover:text-rose-700'}">ขาด</button>
           </div>
         </div>
       </div>
@@ -823,7 +835,7 @@
         if (activeModalGroupKey && commanderGroups[activeModalGroupKey]) {
           showPlatoonDetails(activeModalGroupKey);
         }
-      } catch(e) {
+      } catch (e) {
         alert('เกิดข้อผิดพลาดในการแก้ไขสถานะ: ' + e.message);
       }
     }
@@ -855,7 +867,7 @@
         if (activeModalGroupKey && commanderGroups[activeModalGroupKey]) {
           showPlatoonDetails(activeModalGroupKey);
         }
-      } catch(e) {
+      } catch (e) {
         alert('เกิดข้อผิดพลาด: ' + e.message);
       }
     }
@@ -864,7 +876,7 @@
       if (!activeModalGroupKey || !commanderGroups[activeModalGroupKey]) return;
       const records = commanderGroups[activeModalGroupKey].records;
       const dateStr = selectedCmdDate || dateToStr();
-      
+
       if (!confirm(`ยืนยันเช็คชื่อเข้าเรียนตอนเช้าสำหรับ นศท. ทั้งหมดใน ${activeModalGroupKey} (โดยไม่ต้องสแกนใบหน้า)?`)) return;
 
       try {
@@ -893,7 +905,7 @@
         if (activeModalGroupKey && commanderGroups[activeModalGroupKey]) {
           showPlatoonDetails(activeModalGroupKey);
         }
-      } catch(e) {
+      } catch (e) {
         alert('เกิดข้อผิดพลาด: ' + e.message);
       }
     }
@@ -902,7 +914,7 @@
       if (!activeModalGroupKey || !commanderGroups[activeModalGroupKey]) return;
       const records = commanderGroups[activeModalGroupKey].records;
       const dateStr = selectedCmdDate || dateToStr();
-      
+
       if (!confirm(`ยืนยันเช็คชื่อออก (เลิกฝึก) สำหรับ นศท. ทั้งหมดใน ${activeModalGroupKey}?`)) return;
 
       try {
@@ -925,7 +937,7 @@
         if (activeModalGroupKey && commanderGroups[activeModalGroupKey]) {
           showPlatoonDetails(activeModalGroupKey);
         }
-      } catch(e) {
+      } catch (e) {
         alert('เกิดข้อผิดพลาด: ' + e.message);
       }
     }
