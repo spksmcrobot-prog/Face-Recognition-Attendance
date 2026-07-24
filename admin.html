@@ -429,17 +429,30 @@
         </div>
 
         <div class="grid gap-6 lg:grid-cols-2">
-          <!-- GAS Web App URL Setting -->
-          <div class="card p-6 col-span-1 lg:col-span-2 border-2 border-emerald-500/20 bg-gradient-to-br from-white via-white to-emerald-50/30">
-            <h3 class="font-extrabold text-forest-900 text-lg mb-2 flex items-center gap-2">
-              <span class="text-xl">📧</span> ตั้งค่า Google Apps Script Web App URL (ระบบส่งอีเมล)
-            </h3>
-            <p class="text-sm text-slate-500 mb-4 font-medium">วาง URL ที่ได้จากการ Deploy Google Apps Script Web App เพื่อเปิดใช้งานการส่งอีเมลแจ้งเตือนใบขอลา ผลการอนุมัติ และรายงานประจำวันสำหรับโรงเรียน</p>
-            <div class="flex flex-col sm:flex-row gap-3">
-              <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/AKfycbx.../exec" class="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
-              <button onclick="saveGASUrlSetting()" class="rounded-xl bg-forest-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700 whitespace-nowrap">💾 บันทึก Web App URL</button>
+          <!-- GAS Web App URL & Approver Email Setting -->
+          <div class="card p-6 col-span-1 lg:col-span-2 border-2 border-emerald-500/20 bg-gradient-to-br from-white via-white to-emerald-50/30 space-y-4">
+            <div>
+              <h3 class="font-extrabold text-forest-900 text-lg mb-1 flex items-center gap-2">
+                <span class="text-xl">📧</span> ตั้งค่าระบบส่งอีเมลแจ้งเตือนใบลาอัตโนมัติ (Google Apps Script)
+              </h3>
+              <p class="text-sm text-slate-500 font-medium">เมื่อ นศท. กดขอลา ระบบจะส่งอีเมลแจ้งเตือนไปยังอีเมลของผู้อนุมัติใบลาที่ตั้งไว้ทันที</p>
             </div>
-            <p class="text-xs text-slate-500 mt-2.5 font-bold" id="gas-url-status">สถานะ: กำลังตรวจสอบ...</p>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">Web App URL (จาก Google Apps Script)</label>
+                <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/AKfycb.../exec" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">อีเมลผู้อนุมัติสำหรับรับแจ้งเตือนใบขอลา (Approver Email)</label>
+                <input type="email" id="gas-approver-email-input" placeholder="เช่น teacher@gmail.com" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
+              <p class="text-xs text-slate-500 font-bold" id="gas-url-status">สถานะ: กำลังตรวจสอบ...</p>
+              <button onclick="saveGASUrlSetting()" class="rounded-xl bg-forest-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700 whitespace-nowrap">💾 บันทึกการตั้งค่าการส่งอีเมล</button>
+            </div>
           </div>
 
           <div class="card p-6">
@@ -1466,31 +1479,44 @@ async function loadSysStats() {
 async function loadGASUrlSetting() {
   var statusEl = document.getElementById('gas-url-status');
   var inputEl  = document.getElementById('gas-url-input');
+  var approverEmailEl = document.getElementById('gas-approver-email-input');
   if (!inputEl) return;
 
   var currentUrl = localStorage.getItem('gas_web_app_url') || '';
+  var approverEmail = localStorage.getItem('gas_approver_email') || '';
+
   try {
     var snap = await db.collection(COLLECTIONS.SETTINGS).doc('gas').get();
-    if (snap.exists && snap.data().url) {
-      currentUrl = snap.data().url;
-      localStorage.setItem('gas_web_app_url', currentUrl);
+    if (snap.exists) {
+      var d = snap.data();
+      if (d.url) {
+        currentUrl = d.url;
+        localStorage.setItem('gas_web_app_url', currentUrl);
+      }
+      if (d.approverEmail || d.adminEmail) {
+        approverEmail = d.approverEmail || d.adminEmail;
+        localStorage.setItem('gas_approver_email', approverEmail);
+      }
     }
   } catch(e) {}
 
   inputEl.value = currentUrl;
+  if (approverEmailEl) approverEmailEl.value = approverEmail;
+
   if (currentUrl) {
-    statusEl.textContent = '✅ ตั้งค่าใช้งานแล้ว: ' + currentUrl;
-    statusEl.className   = 'text-xs text-emerald-600 font-bold mt-2.5';
+    statusEl.textContent = '✅ พร้อมใช้งาน' + (approverEmail ? ' (ส่งแจ้งเตือนไปที่: ' + approverEmail + ')' : ' (ส่งหาครูฝึกผู้อนุมัติ)');
+    statusEl.className   = 'text-xs text-emerald-600 font-bold';
   } else {
     statusEl.textContent = '⚠️ ยังไม่ได้ระบุ Web App URL (ใช้ค่าเริ่มต้นระบบ)';
-    statusEl.className   = 'text-xs text-amber-600 font-bold mt-2.5';
+    statusEl.className   = 'text-xs text-amber-600 font-bold';
   }
 }
 
 async function saveGASUrlSetting() {
   var inputEl  = document.getElementById('gas-url-input');
-  var statusEl = document.getElementById('gas-url-status');
+  var approverEmailEl = document.getElementById('gas-approver-email-input');
   var url = (inputEl.value || '').trim();
+  var approverEmail = approverEmailEl ? (approverEmailEl.value || '').trim() : '';
 
   if (url && !url.startsWith('http')) {
     showToast('กรุณากรอก Web App URL ให้ถูกต้อง (ขึ้นต้นด้วย https://)', 'warning');
@@ -1499,13 +1525,17 @@ async function saveGASUrlSetting() {
 
   try {
     localStorage.setItem('gas_web_app_url', url);
+    if (approverEmail) localStorage.setItem('gas_approver_email', approverEmail);
+
     await db.collection(COLLECTIONS.SETTINGS).doc('gas').set({
       url: url,
+      approverEmail: approverEmail,
+      adminEmail: approverEmail,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy: currentUser ? currentUser.uid : 'admin'
     }, { merge: true });
 
-    showToast('บันทึก Google Apps Script URL เรียบร้อย', 'success');
+    showToast('บันทึกการตั้งค่าการส่งอีเมลเรียบร้อยแล้ว', 'success');
     loadGASUrlSetting();
   } catch(e) {
     showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');

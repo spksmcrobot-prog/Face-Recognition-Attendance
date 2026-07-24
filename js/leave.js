@@ -140,46 +140,60 @@ async function getLeaveRequest(leaveId) {
   return snap.exists ? { id: snap.id, ...snap.data() } : null;
 }
 
-// ─── Get Instructor Emails (Role 5 & Role 6 or any staff with contactEmail) ───
+// ─── Get Instructor Emails (Role 5 & Role 6 or Approver Email in settings) ───
 async function getInstructorEmails() {
   const emails = new Set();
+
+  // 1. Check local & Firestore settings for specific approver email
   try {
-    const snap = await db.collection(COLLECTIONS.USERS)
-                         .where('role','>=', ROLES.INSTRUCTOR)
-                         .get();
-    snap.docs.forEach(d => {
-      const u = d.data();
-      const em = u.contactEmail || u.email;
-      if (em && em.includes('@') && !em.endsWith('@nstda.system')) {
-        emails.add(em.trim());
+    const localApprover = localStorage.getItem('gas_approver_email');
+    if (localApprover && localApprover.includes('@')) {
+      emails.add(localApprover.trim());
+    }
+  } catch(e) {}
+
+  try {
+    const sysSnap = await db.collection(COLLECTIONS.SETTINGS).doc('gas').get();
+    if (sysSnap.exists) {
+      const d = sysSnap.data();
+      if (d.approverEmail && d.approverEmail.includes('@')) emails.add(d.approverEmail.trim());
+      if (d.adminEmail && d.adminEmail.includes('@')) emails.add(d.adminEmail.trim());
+    }
+  } catch(e) {}
+
+  // 2. Fetch all instructor/admin accounts (role >= 5) from Firestore
+  try {
+    const snap = await db.collection(COLLECTIONS.USERS).get();
+    snap.docs.forEach(doc => {
+      const u = doc.data();
+      const roleNum = Number(u.role);
+      if (roleNum >= ROLES.INSTRUCTOR) {
+        const em = (u.contactEmail || u.email || '').trim();
+        if (em && em.includes('@') && !em.endsWith('@nstda.system')) {
+          emails.add(em);
+        }
       }
     });
   } catch(e) {
     console.warn('Error fetching instructor emails:', e);
   }
 
-  // Fallback: search all staff (role >= 2) with valid contact email if no role 5+ email found
+  // 3. Fallback: search all staff (role >= 2) with valid contact email if no role 5+ email found
   if (emails.size === 0) {
     try {
-      const staffSnap = await db.collection(COLLECTIONS.USERS)
-                               .where('role','>=', ROLES.PLATOON)
-                               .get();
-      staffSnap.docs.forEach(d => {
-        const u = d.data();
-        const em = u.contactEmail || u.email;
-        if (em && em.includes('@') && !em.endsWith('@nstda.system')) {
-          emails.add(em.trim());
+      const snap = await db.collection(COLLECTIONS.USERS).get();
+      snap.docs.forEach(doc => {
+        const u = doc.data();
+        const roleNum = Number(u.role);
+        if (roleNum >= ROLES.PLATOON) {
+          const em = (u.contactEmail || u.email || '').trim();
+          if (em && em.includes('@') && !em.endsWith('@nstda.system')) {
+            emails.add(em);
+          }
         }
       });
     } catch(e) {}
   }
-
-  try {
-    const sysSnap = await db.collection(COLLECTIONS.SETTINGS).doc('gas').get();
-    if (sysSnap.exists && sysSnap.data().adminEmail) {
-      emails.add(sysSnap.data().adminEmail.trim());
-    }
-  } catch(e) {}
 
   return Array.from(emails);
 }

@@ -33,7 +33,7 @@ function doPost(e) {
     // 1. แจ้งเตือนเมื่อนักเรียนขอลา (ส่งถึงหัวหน้าชุดครูฝึก / ผู้อนุมัติ)
     if (action === 'LEAVE_REQUEST') {
       const recipients = data.recipients || [];
-      const subject = `[ใบขอลา] ${data.studentName} — ${data.leaveType}`;
+      const subject = `[คำร้องขอลา] ${data.studentName} — ${data.leaveType}`;
       const htmlBody = buildLeaveRequestEmail(data);
 
       recipients.forEach(function(email) {
@@ -51,7 +51,7 @@ function doPost(e) {
     // 2. แจ้งผลการอนุมัติ / ปฏิเสธใบลา (ส่งกลับหา นศท.)
     if (action === 'LEAVE_APPROVED' || action === 'LEAVE_REJECTED') {
       const isApproved = action === 'LEAVE_APPROVED';
-      const statusText = isApproved ? 'อนุมัติแล้ว ✅' : 'ปฏิเสธ ❌';
+      const statusText = isApproved ? 'อนุมัติแล้ว' : 'ไม่ได้รับการอนุมัติ';
       const recipients = data.recipients || [data.studentEmail];
       const subject = `[ผลการพิจารณาใบลา] ${data.leaveType} — ${statusText}`;
       const htmlBody = buildLeaveResultEmail(data, isApproved);
