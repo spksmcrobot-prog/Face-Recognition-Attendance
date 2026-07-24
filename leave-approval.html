@@ -285,13 +285,16 @@ async function loadLeaves() {
   if (tp) filters.type   = tp;
 
   if (currentUser) {
+    var platoonStr = String(currentUser.platoon || '');
+    var isSpecial = platoonStr.includes('พิเศษ') || currentUser.track === 'special';
+
     if (currentUser.role === ROLES.PLATOON) {
       if (currentUser.company) filters.company = currentUser.company;
       if (currentUser.platoon) filters.platoon = currentUser.platoon;
-      filters.track = currentUser.track || (String(currentUser.platoon || '').includes('พิเศษ') ? 'special' : 'regular');
+      filters.track = isSpecial ? 'special' : 'regular';
     } else if (currentUser.role === ROLES.COMPANY) {
       if (currentUser.company) filters.company = currentUser.company;
-      filters.track = currentUser.track || 'regular';
+      filters.track = currentUser.track ? currentUser.track : (isSpecial ? 'special' : 'regular');
     }
   }
 

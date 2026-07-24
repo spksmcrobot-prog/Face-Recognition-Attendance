@@ -2683,16 +2683,21 @@ a, button, input, select, textarea {
    ------------------------------------------------------------ */
 .swal2-center-unified-popup {
   border-radius: 1.5rem !important;
-  padding: 1.5rem !important;
+  padding: 1.25rem 1.5rem 1.5rem 1.5rem !important;
   font-family: 'Prompt', 'Kanit', sans-serif !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .swal2-icon {
-  margin: 1.25rem auto 0.75rem auto !important;
+  margin: 0.5rem auto 0.5rem auto !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   box-sizing: content-box !important;
+  position: relative !important;
 }
 
 .swal2-icon .swal2-icon-content {

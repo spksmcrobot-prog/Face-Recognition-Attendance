@@ -218,31 +218,68 @@ function buildLeaveResultEmail(d, isApproved) {
 // 3. เทมเพลตอีเมลรายงานสรุปการเข้าเรียนประจำวันประจำโรงเรียน
 function buildDailySummaryEmail(d) {
   const stats = d.stats || { present: 0, absent: 0, late: 0, leave: 0 };
-  const students = d.students || [];
+  const allStudents = d.students || [];
 
-  const rowsHtml = students.map(function(s) {
-    let badgeStyle = 'background-color: #f1f5f9; color: #475569;';
-    if (s.status === 'มาเรียน' || s.status === 'present') badgeStyle = 'background-color: #d1fae5; color: #065f46;';
-    else if (s.status === 'ขาดเรียน' || s.status === 'absent') badgeStyle = 'background-color: #fee2e2; color: #991b1b;';
-    else if (s.status === 'มาสาย' || s.status === 'late') badgeStyle = 'background-color: #fef3c7; color: #92400e;';
-    else if (s.status === 'ลา' || s.status === 'leave') badgeStyle = 'background-color: #e0f2fe; color: #075985;';
+  // กรองเฉพาะผู้ที่ไม่ใช่ "มาเรียน" (แสดงเฉพาะคน ขาดเรียน / มาสาย / ลากิจ-ป่วย)
+  const nonPresentStudents = allStudents.filter(function(s) {
+    const st = String(s.status || '').toLowerCase();
+    return st !== 'มาเรียน' && st !== 'present';
+  });
 
-    return `
-      <tr style="border-bottom: 1px solid #f1f5f9;">
-        <td style="padding: 10px 12px; font-family: monospace; font-weight: bold; color: #1e293b;">${s.studentId}</td>
-        <td style="padding: 10px 12px; font-weight: 500; color: #0f172a;">${s.name}</td>
-        <td style="padding: 10px 12px; color: #475569; text-align: center;">ปี ${s.company || '-'} / หมวด ${s.platoon || '-'}</td>
-        <td style="padding: 10px 12px; text-align: center;">
-          <span style="padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; ${badgeStyle}">${s.status}</span>
-        </td>
-      </tr>
+  let detailContentHtml = '';
+
+  if (nonPresentStudents.length === 0) {
+    detailContentHtml = `
+      <div style="background-color: #ecfdf5; border: 1px solid #6ee7b7; padding: 18px; border-radius: 12px; font-size: 14px; color: #047857; text-align: center; font-weight: bold; margin-top: 20px;">
+        นักศึกษาวิชาทหารมาฝึกครบทุกคน (ไม่มีผู้ขาดเรียน / มาสาย / ลา)
+      </div>
     `;
-  }).join('');
+  } else {
+    const rowsHtml = nonPresentStudents.map(function(s) {
+      let badgeStyle = 'background-color: #f1f5f9; color: #475569;';
+      if (s.status === 'ขาดเรียน' || s.status === 'absent') badgeStyle = 'background-color: #fee2e2; color: #991b1b;';
+      else if (s.status === 'มาสาย' || s.status === 'late') badgeStyle = 'background-color: #fef3c7; color: #92400e;';
+      else if (s.status === 'ลา' || s.status === 'leave') badgeStyle = 'background-color: #e0f2fe; color: #075985;';
+
+      return `
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 10px 12px; font-family: monospace; font-weight: bold; color: #1e293b;">${s.studentId}</td>
+          <td style="padding: 10px 12px; font-weight: bold; color: #0f172a;">${s.name}</td>
+          <td style="padding: 10px 12px; color: #475569; text-align: center;">ปี ${s.company || '-'} / หมวด ${s.platoon || '-'}</td>
+          <td style="padding: 10px 12px; text-align: center;">
+            <span style="padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; ${badgeStyle}">${s.status}</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    detailContentHtml = `
+      <h3 style="font-size: 14px; color: #1e293b; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">
+        รายชื่อ นศท. ที่ขาดเรียน / มาสาย / ลา (${nonPresentStudents.length} ราย):
+      </h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <thead>
+          <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+            <th style="padding: 10px 12px; text-align: left; color: #475569;">รหัส นศท.</th>
+            <th style="padding: 10px 12px; text-align: left; color: #475569;">ชื่อ–นามสกุล</th>
+            <th style="padding: 10px 12px; text-align: center; color: #475569;">ปี / หมวด</th>
+            <th style="padding: 10px 12px; text-align: center; color: #475569;">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+      <p style="font-size: 11px; color: #64748b; margin-top: 10px; text-align: right; font-style: italic;">
+        * หมายเหตุ: นศท. ที่มาเรียนปกติจำนวน ${stats.present || 0} นาย สรุปแสดงเป็นยอดรวมในกล่องสถิติด้านบน
+      </p>
+    `;
+  }
 
   return `
     <div style="font-family: 'Sarabun', Arial, sans-serif; max-width: 680px; margin: 0 auto; background-color: #f8fafc; padding: 20px; border-radius: 16px;">
       <div style="background: linear-gradient(135deg, #159a61, #0f766e); color: #ffffff; padding: 24px; border-radius: 12px 12px 0 0;">
-        <h2 style="margin: 0; font-size: 20px; font-weight: 800;">📊 รายงานการเช็คชื่อ นศท. ประจำวัน</h2>
+        <h2 style="margin: 0; font-size: 20px; font-weight: 800;">รายงานการเช็คชื่อ นศท. ประจำวัน</h2>
         <p style="margin: 4px 0 0; opacity: 0.9; font-size: 14px;">โรงเรียน: <strong>${d.schoolName}</strong> | วันที่: ${d.date}</p>
       </div>
 
@@ -252,46 +289,33 @@ function buildDailySummaryEmail(d) {
 
         <!-- Dynamic Summary Cards -->
         <div style="display: table; width: 100%; table-layout: fixed; margin: 20px 0; text-align: center;">
-          <div style="display: table-cell; padding: 8px;">
-            <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; padding: 12px; border-radius: 10px;">
+          <div style="display: table-cell; padding: 6px;">
+            <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; padding: 12px 6px; border-radius: 10px;">
               <div style="font-size: 20px; font-weight: bold; color: #047857;">${stats.present || 0}</div>
-              <div style="font-size: 12px; color: #065f46; font-weight: bold;">มาเรียน</div>
+              <div style="font-size: 11px; color: #065f46; font-weight: bold;">มาเรียน</div>
             </div>
           </div>
-          <div style="display: table-cell; padding: 8px;">
-            <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 12px; border-radius: 10px;">
+          <div style="display: table-cell; padding: 6px;">
+            <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 12px 6px; border-radius: 10px;">
               <div style="font-size: 20px; font-weight: bold; color: #b91c1c;">${stats.absent || 0}</div>
-              <div style="font-size: 12px; color: #991b1b; font-weight: bold;">ขาดเรียน</div>
+              <div style="font-size: 11px; color: #991b1b; font-weight: bold;">ขาดเรียน</div>
             </div>
           </div>
-          <div style="display: table-cell; padding: 8px;">
-            <div style="background-color: #fffbeb; border: 1px solid #fde68a; padding: 12px; border-radius: 10px;">
+          <div style="display: table-cell; padding: 6px;">
+            <div style="background-color: #fffbeb; border: 1px solid #fde68a; padding: 12px 6px; border-radius: 10px;">
               <div style="font-size: 20px; font-weight: bold; color: #b45309;">${stats.late || 0}</div>
-              <div style="font-size: 12px; color: #92400e; font-weight: bold;">มาสาย</div>
+              <div style="font-size: 11px; color: #92400e; font-weight: bold;">มาสาย</div>
             </div>
           </div>
-          <div style="display: table-cell; padding: 8px;">
-            <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 10px;">
+          <div style="display: table-cell; padding: 6px;">
+            <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; padding: 12px 6px; border-radius: 10px;">
               <div style="font-size: 20px; font-weight: bold; color: #0369a1;">${stats.leave || 0}</div>
-              <div style="font-size: 12px; color: #075985; font-weight: bold;">ลากิจ/ลาป่วย</div>
+              <div style="font-size: 11px; color: #075985; font-weight: bold;">ลากิจ/ป่วย</div>
             </div>
           </div>
         </div>
 
-        <h3 style="font-size: 15px; color: #1e293b; margin-top: 24px; margin-bottom: 12px;">รายชื่อและสถานะ นศท. ทุกราย:</h3>
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-          <thead>
-            <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-              <th style="padding: 10px 12px; text-align: left; color: #475569;">รหัส นศท.</th>
-              <th style="padding: 10px 12px; text-align: left; color: #475569;">ชื่อ–นามสกุล</th>
-              <th style="padding: 10px 12px; text-align: center; color: #475569;">ปี / หมวด</th>
-              <th style="padding: 10px 12px; text-align: center; color: #475569;">สถานะ</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-        </table>
+        ${detailContentHtml}
       </div>
 
       <p style="text-align: center; font-size: 12px; color: #94a3b8; margin-top: 16px;">

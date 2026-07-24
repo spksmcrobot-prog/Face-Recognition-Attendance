@@ -961,6 +961,14 @@ async function loadStudents() {
     var snap = await db.collection(COLLECTIONS.USERS).where('role','==',ROLES.STUDENT).get();
     allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+    // Fetch today's attendance records to display today's check-in status directly
+    try {
+      var todayAttSnap = await db.collection(COLLECTIONS.ATTENDANCE).doc(today()).collection('records').get();
+      var attMap = {};
+      todayAttSnap.docs.forEach(d => { attMap[d.id] = d.data(); });
+      allStudents.forEach(s => { s.todayAtt = attMap[s.id] || null; });
+    } catch(e) {}
+
     // Restrict student creation/import for Role 4 and lower
     var addStudentBtn = document.getElementById('btn-add-student');
     var importCsvBtn  = document.getElementById('btn-import-csv');
@@ -1042,50 +1050,71 @@ function renderStudentsTable(list) {
   var canEdit = currentUser && currentUser.role >= ROLES.INSTRUCTOR;
 
   el.innerHTML = `
-    <table class="w-full text-left border-collapse min-w-[800px]">
+    <table class="w-full text-left border-collapse min-w-[850px]">
       <thead>
         <tr class="bg-slate-50 border-b border-emerald-950/5">
           <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">รหัส / ชื่อ นศท.</th>
           <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">ชั้นปี & หมวด</th>
+          <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">เช็คชื่อวันนี้</th>
           <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">สถานศึกษา</th>
           <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">Face ID</th>
           <th class="px-4 py-3 text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider text-right">จัดการ</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-emerald-950/5">
-        ${list.map(s => `
-        <tr class="hover:bg-slate-50/50 transition">
-          <td class="px-4 py-3">
-            <div class="flex items-center gap-3">
-              <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-100 text-[0.65rem] font-black text-forest-700">${initials(s.name)}</div>
-              <div>
-                <p class="text-sm font-bold text-forest-900">${escapeHtml(s.name||'')}</p>
-                <p class="text-xs text-slate-500 font-medium">${escapeHtml(s.studentId||'')}</p>
-              </div>
-            </div>
-          </td>
-          <td class="px-4 py-3">
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-200/80">🎓 ชั้นปีที่ ${escapeHtml(s.company||'-')}</span>
-              <span class="rounded-lg bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-800 border border-sky-200/80">🎖️ หมวด ${escapeHtml(s.platoon||'-')}</span>
-            </div>
-          </td>
-          <td class="px-4 py-3">
-            <p class="text-sm text-slate-700 max-w-[180px] truncate font-medium" title="${escapeHtml(s.school||'')}">${escapeHtml(s.school||'-')}</p>
-          </td>
-          <td class="px-4 py-3">
-            ${s.faceDescriptor 
-              ? `<span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[0.65rem] font-bold text-emerald-600 border border-emerald-100"><span>✅</span> ลงทะเบียนแล้ว</span>` 
-              : `<span class="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-[0.65rem] font-bold text-rose-600 border border-rose-100"><span>❌</span> ยังไม่ลงทะเบียน</span>`
+        ${list.map(s => {
+          var att = s.todayAtt;
+          var attBadgeHtml = `<span class="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[0.65rem] font-semibold text-slate-500">⏳ ยังไม่เช็คชื่อ</span>`;
+          if (att) {
+            var inTime = att.checkInTime ? formatTime(att.checkInTime) : '';
+            if (att.status === 'late') {
+              attBadgeHtml = `<span class="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700 border border-amber-200">⚠️ สาย ${inTime ? '('+inTime+')' : ''}</span>`;
+            } else if (att.status === 'leave') {
+              attBadgeHtml = `<span class="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[0.65rem] font-bold text-sky-700 border border-sky-200">🔵 ลา</span>`;
+            } else if (att.status === 'absent') {
+              attBadgeHtml = `<span class="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-[0.65rem] font-bold text-rose-700 border border-rose-200">🔴 ขาดเรียน</span>`;
+            } else {
+              attBadgeHtml = `<span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-700 border border-emerald-200">✅ มาเรียน ${inTime ? '('+inTime+')' : ''}</span>`;
             }
-          </td>
-          <td class="px-4 py-3 text-right">
-            <div class="flex justify-end gap-1.5">
-              ${canEdit ? `<button onclick="openEditStudent('${s.id}')" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.65rem] font-bold text-slate-600 hover:bg-slate-200 transition">แก้ไข</button>` : ''}
-              <button onclick="openFaceEnroll('${s.id}','${escapeHtml(s.name)}')" class="rounded-lg bg-sky-50 px-2.5 py-1.5 text-[0.65rem] font-bold text-sky-600 hover:bg-sky-100 transition">📸 Face ID</button>
-            </div>
-          </td>
-        </tr>`).join('')}
+          }
+
+          return `
+          <tr class="hover:bg-slate-50/50 transition">
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-3">
+                <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-100 text-[0.65rem] font-black text-forest-700">${initials(s.name)}</div>
+                <div>
+                  <p class="text-sm font-bold text-forest-900">${escapeHtml(s.name||'')}</p>
+                  <p class="text-xs text-slate-500 font-medium">${escapeHtml(s.studentId||'')}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-200/80">🎓 ชั้นปีที่ ${escapeHtml(s.company||'-')}</span>
+                <span class="rounded-lg bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-800 border border-sky-200/80">🎖️ หมวด ${escapeHtml(s.platoon||'-')}</span>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              ${attBadgeHtml}
+            </td>
+            <td class="px-4 py-3">
+              <p class="text-sm text-slate-700 max-w-[180px] truncate font-medium" title="${escapeHtml(s.school||'')}">${escapeHtml(s.school||'-')}</p>
+            </td>
+            <td class="px-4 py-3">
+              ${s.faceDescriptor 
+                ? `<span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[0.65rem] font-bold text-emerald-600 border border-emerald-100"><span>✅</span> ลงทะเบียนแล้ว</span>` 
+                : `<span class="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-[0.65rem] font-bold text-rose-600 border border-rose-100"><span>❌</span> ยังไม่ลงทะเบียน</span>`
+              }
+            </td>
+            <td class="px-4 py-3 text-right">
+              <div class="flex justify-end gap-1.5">
+                ${canEdit ? `<button onclick="openEditStudent('${s.id}')" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.65rem] font-bold text-slate-600 hover:bg-slate-200 transition">แก้ไข</button>` : ''}
+                <button onclick="openFaceEnroll('${s.id}','${escapeHtml(s.name)}')" class="rounded-lg bg-sky-50 px-2.5 py-1.5 text-[0.65rem] font-bold text-sky-600 hover:bg-sky-100 transition">📸 Face ID</button>
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}
       </tbody>
     </table>
   `;
