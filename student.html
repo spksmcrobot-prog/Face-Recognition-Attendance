@@ -784,9 +784,16 @@ function showToastBar(msg, isError) {
 
 // ── Auth ─────────────────────────────────────────────────
 auth.onAuthStateChanged(async function(user) {
-  if (!user) { window.location.href = 'index.html'; return; }
+  if (!user) {
+    if (sessionStorage.getItem('is_switching_account') === 'true' || window._isSwitchingAccount) return;
+    window.location.href = 'index.html';
+    return;
+  }
   var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
-  if (!snap.exists) { auth.signOut(); window.location.href = 'index.html'; return; }
+  if (!snap.exists) {
+    if (sessionStorage.getItem('is_switching_account') === 'true' || window._isSwitchingAccount) return;
+    auth.signOut(); window.location.href = 'index.html'; return;
+  }
   _currentUser = Object.assign({ uid: user.uid }, snap.data());
 
   // Redirect non-students to dashboard

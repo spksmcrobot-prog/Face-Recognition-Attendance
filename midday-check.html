@@ -316,9 +316,16 @@
     new Date().toLocaleDateString('th-TH',{weekday:'short',month:'short',day:'numeric'});
 
   auth.onAuthStateChanged(async user => {
-    if (!user) { window.location.href='index.html'; return; }
+    if (!user) {
+      if (sessionStorage.getItem('is_switching_account') === 'true' || window._isSwitchingAccount) return;
+      window.location.href='index.html';
+      return;
+    }
     var snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
-    if (!snap.exists) { auth.signOut(); window.location.href='index.html'; return; }
+    if (!snap.exists) {
+      if (sessionStorage.getItem('is_switching_account') === 'true' || window._isSwitchingAccount) return;
+      auth.signOut(); window.location.href='index.html'; return;
+    }
     currentUser = { uid: user.uid, ...snap.data() };
     
     renderSidebar(currentUser);

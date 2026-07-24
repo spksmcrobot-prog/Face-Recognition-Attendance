@@ -432,7 +432,7 @@ function openSwitchAccountModal() {
     modal = document.createElement('div');
     modal.id = 'switch-account-modal';
     modal.className = 'modal-backdrop';
-    modal.style.zIndex = '1000';
+    modal.style.zIndex = '999999';
     
     modal.innerHTML = `
       <div class="modal-card !max-w-md flex flex-col p-0 overflow-hidden" style="max-width: 440px;">
@@ -504,10 +504,12 @@ function renderSavedAccountsList() {
   accounts.forEach(a => {
     const isCurrent = a.uid === currentUid;
     const roleName = ROLE_NAMES[a.role] || 'ผู้ใช้งาน';
+    const safeBirthdate = escapeHtml(a.birthdate || '');
+    const safeStudentId = escapeHtml(a.studentId || '');
     
     html += `
       <div class="flex items-center justify-between p-3 rounded-xl border ${isCurrent ? 'border-forest-600 bg-forest-50/30' : 'border-slate-100 bg-white hover:border-forest-100'} transition gap-2">
-        <div class="flex items-center gap-3 cursor-pointer min-w-0 flex-1" ${isCurrent ? '' : `onclick="switchAccount('${a.studentId}', '${a.birthdate}')"`}>
+        <div class="flex items-center gap-3 cursor-pointer min-w-0 flex-1" ${isCurrent ? '' : `onclick="switchAccount('${safeStudentId}', '${safeBirthdate}')"`}>
           <div class="grid h-8 w-8 shrink-0 place-items-center rounded-lg ${isCurrent ? 'bg-forest-600 text-white' : 'bg-slate-50 text-forest-700'} text-[10px] font-bold">
             ${initials(a.name || 'น ศ')}
           </div>
@@ -516,10 +518,10 @@ function renderSavedAccountsList() {
               <span class="text-xs font-bold text-forest-900 truncate">${escapeHtml(a.name || '-')}</span>
               ${isCurrent ? '<span class="rounded bg-forest-100 px-1.5 py-0.5 text-[8px] font-extrabold text-forest-700">ปัจจุบัน</span>' : ''}
             </div>
-            <span class="text-[10px] text-slate-400 font-mono">${roleName} · ${escapeHtml(a.studentId)}</span>
+            <span class="text-[10px] text-slate-400 font-mono">${roleName} · ${safeStudentId}</span>
           </div>
         </div>
-        <button onclick="deleteSavedAccount('${a.studentId}')" class="h-7 w-7 rounded-lg border border-slate-100 bg-white flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-100 transition shrink-0" title="ลบบัญชี">
+        <button onclick="deleteSavedAccount('${safeStudentId}')" class="h-7 w-7 rounded-lg border border-slate-100 bg-white flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-100 transition shrink-0" title="ลบบัญชี">
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
@@ -547,6 +549,9 @@ async function handleSwitchAddAccountSubmit(event) {
   showLoading(btn, 'กำลังตรวจสอบ...');
   
   try {
+    sessionStorage.setItem('is_switching_account', 'true');
+    window._isSwitchingAccount = true;
+
     const cred = await login(studentId, birthdate);
     const userSnap = await db.collection(COLLECTIONS.USERS).doc(cred.user.uid).get();
     let name = 'ผู้ใช้งาน';
@@ -560,6 +565,9 @@ async function handleSwitchAddAccountSubmit(event) {
     saveAccount(studentId, birthdate, name, role, cred.user.uid);
     closeModal('switch-account-modal');
     
+    sessionStorage.removeItem('is_switching_account');
+    window._isSwitchingAccount = false;
+
     if (typeof Swal !== 'undefined') {
       await Swal.fire({
         icon: 'success',
@@ -571,6 +579,8 @@ async function handleSwitchAddAccountSubmit(event) {
     
     window.location.href = role === 1 ? 'student.html' : 'dashboard.html';
   } catch (err) {
+    sessionStorage.removeItem('is_switching_account');
+    window._isSwitchingAccount = false;
     console.error(err);
     showAlertPopup('เข้าสู่ระบบไม่สำเร็จ', err.message || 'รหัสผ่านหรือบัญชีไม่ถูกต้อง', 'error');
     hideLoading(btn);
@@ -578,6 +588,11 @@ async function handleSwitchAddAccountSubmit(event) {
 }
 
 async function switchAccount(studentId, birthdate) {
+  if (!studentId) return;
+
+  sessionStorage.setItem('is_switching_account', 'true');
+  window._isSwitchingAccount = true;
+
   if (typeof Swal !== 'undefined') {
     Swal.fire({
       title: 'กำลังสลับบัญชี...',
@@ -588,7 +603,20 @@ async function switchAccount(studentId, birthdate) {
   }
   
   try {
-    const cred = await login(studentId, birthdate);
+    let cleanBirthdate = birthdate || '';
+    if (!cleanBirthdate || cleanBirthdate === 'undefined') {
+      const saved = getSavedAccounts().find(a => a.studentId === studentId);
+      if (saved && saved.birthdate) cleanBirthdate = saved.birthdate;
+    }
+
+    const stdBirthdate = (typeof standardizeBirthdate === 'function') ? standardizeBirthdate(cleanBirthdate) : cleanBirthdate;
+    
+    // Sign out current user first to ensure clean state
+    if (typeof auth !== 'undefined' && auth.currentUser) {
+      await auth.signOut().catch(() => {});
+    }
+
+    const cred = await login(studentId, stdBirthdate);
     const userSnap = await db.collection(COLLECTIONS.USERS).doc(cred.user.uid).get();
     let name = 'ผู้ใช้งาน';
     let role = 1;
@@ -598,12 +626,16 @@ async function switchAccount(studentId, birthdate) {
       role = data.role || role;
     }
     
-    saveAccount(studentId, birthdate, name, role, cred.user.uid);
+    saveAccount(studentId, stdBirthdate, name, role, cred.user.uid);
+    sessionStorage.removeItem('is_switching_account');
+    window._isSwitchingAccount = false;
     
     window.location.href = role === 1 ? 'student.html' : 'dashboard.html';
   } catch (err) {
-    console.error(err);
-    showAlertPopup('สลับบัญชีไม่สำเร็จ', err.message || 'กรุณาลองใหม่อีกครั้ง', 'error');
+    sessionStorage.removeItem('is_switching_account');
+    window._isSwitchingAccount = false;
+    console.error('Account switch error:', err);
+    showAlertPopup('สลับบัญชีไม่สำเร็จ', err.message || 'รหัสผ่านหรือข้อมูลบัญชีไม่ถูกต้อง', 'error');
   }
 }
 

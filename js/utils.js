@@ -309,9 +309,16 @@ function hideLoading(btnEl) {
 function requireAuth(allowedRoles = []) {
   return new Promise((resolve, reject) => {
     auth.onAuthStateChanged(async user => {
-      if (!user) { window.location.href='index.html'; return; }
+      if (!user) {
+        if (sessionStorage.getItem('is_switching_account') === 'true' || window._isSwitchingAccount) return;
+        window.location.href='index.html';
+        return;
+      }
       const snap = await db.collection(COLLECTIONS.USERS).doc(user.uid).get();
-      if (!snap.exists) { auth.signOut(); window.location.href='index.html'; return; }
+      if (!snap.exists) {
+        if (sessionStorage.getItem('is_switching_account') === 'true' || window._isSwitchingAccount) return;
+        auth.signOut(); window.location.href='index.html'; return;
+      }
       const data = snap.data();
       if (allowedRoles.length && !allowedRoles.includes(data.role)) {
         window.location.href='dashboard.html';
