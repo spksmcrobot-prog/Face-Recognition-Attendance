@@ -637,8 +637,13 @@
               <option value="5">🎓 ชั้นปีที่ 5 (ปี 5)</option>
             </select>
           </div>
-          <!-- Hidden track wrap -->
-          <input type="hidden" id="st-track" value="all">
+          <div id="st-track-wrap">
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">สายการฝึก / กองร้อยที่ดูแล <span class="text-rose-500">*</span></label>
+            <select id="st-track" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+              <option value="regular">🛡️ กองร้อยปกติ (ดูแล นศท.ชาย ทั้งหมดในชั้นปี)</option>
+              <option value="special">🎀 กองร้อยพิเศษ (ดูแล นศท.หญิง ทั้งหมดในชั้นปี)</option>
+            </select>
+          </div>
           <div id="st-platoon-wrap">
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">หมวดที่ดูแล <span class="text-rose-500">*</span></label>
             <select id="st-platoon" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
@@ -1148,12 +1153,13 @@ function toggleStaffFields() {
   var role = document.getElementById('st-role').value;
   var needCompany = (role == '2' || role == '3');
   var needPlatoon = (role == '2');
+  var needTrack   = (role == '3');
 
   document.getElementById('st-company-wrap').style.display = needCompany ? 'block' : 'none';
   document.getElementById('st-platoon-wrap').style.display = needPlatoon ? 'block' : 'none';
 
   var trackWrap = document.getElementById('st-track-wrap');
-  if (trackWrap) trackWrap.style.display = 'none';
+  if (trackWrap) trackWrap.style.display = needTrack ? 'block' : 'none';
 
   var guide = document.getElementById('st-platoon-guide');
   if (guide) guide.style.display = (role == '2') ? 'block' : 'none';
@@ -1221,7 +1227,7 @@ function openAddStaffModal() {
   document.getElementById('st-birth-wrap').style.display = 'block';
   document.getElementById('st-company').value = '1';
   document.getElementById('st-platoon').value = '';
-  document.getElementById('st-track').value = 'all';
+  document.getElementById('st-track').value = 'regular';
   document.getElementById('st-role').value = '3';
   toggleStaffFields();
   openModal('add-staff-modal'); 
@@ -1244,7 +1250,7 @@ async function openEditStaffModal(uid) {
     document.getElementById('st-role').value = s.role || '3';
     document.getElementById('st-company').value = s.company || '1';
     document.getElementById('st-platoon').value = s.platoon || '';
-    document.getElementById('st-track').value = s.track || 'all';
+    document.getElementById('st-track').value = s.track || 'regular';
 
     toggleStaffFields();
     openModal('add-staff-modal');
@@ -1264,10 +1270,12 @@ async function saveStaff() {
     var company = document.getElementById('st-company').value.trim();
     var platoon = document.getElementById('st-platoon').value.trim();
     
-    // Auto-derive track based on platoon assignment or role
+    // Auto-derive track based on platoon assignment or role 3 selection
     var track = 'all';
     if (role === 2 && platoon) {
       track = platoon.includes('พิเศษ') ? 'special' : 'regular';
+    } else if (role === 3) {
+      track = document.getElementById('st-track').value || 'regular';
     }
 
     if (stUid) {

@@ -582,8 +582,9 @@
         });
 
         let allStudentsInScope = [];
+        const filterWrap = document.getElementById('platoon-type-filter-wrap');
+
         if (user.role === ROLES.PLATOON) {
-          const filterWrap = document.getElementById('platoon-type-filter-wrap');
           if (filterWrap) filterWrap.classList.add('hidden');
 
           let sQuery = db.collection(COLLECTIONS.USERS).where('role', '==', ROLES.STUDENT);
@@ -593,24 +594,37 @@
           allStudentsInScope = sSnap.docs
             .map(d => ({ uid: d.id, ...d.data() }))
             .filter(s => String(s.platoon || '').trim() === String(user.platoon || '').trim());
+
+          if (user.track === 'regular') {
+            allStudentsInScope = allStudentsInScope.filter(s => !String(s.platoon || '').includes('พิเศษ'));
+          } else if (user.track === 'special') {
+            allStudentsInScope = allStudentsInScope.filter(s => String(s.platoon || '').includes('พิเศษ'));
+          }
         } else if (user.role === ROLES.COMPANY) {
-          const filterWrap = document.getElementById('platoon-type-filter-wrap');
+          // Company Commander: Can check all platoons in their year (company) separated by gender track (male vs female)
+          let sQuery = db.collection(COLLECTIONS.USERS).where('role', '==', ROLES.STUDENT);
+          if (user.company) sQuery = sQuery.where('company', '==', user.company);
+          const sSnap = await sQuery.get();
+          let fetchedStudents = sSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+
           if (user.track === 'regular') {
             currentPlatoonTypeFilter = 'regular';
             if (filterWrap) filterWrap.classList.add('hidden');
+            fetchedStudents = fetchedStudents.filter(s => !String(s.platoon || '').includes('พิเศษ'));
           } else if (user.track === 'special') {
             currentPlatoonTypeFilter = 'special';
             if (filterWrap) filterWrap.classList.add('hidden');
+            fetchedStudents = fetchedStudents.filter(s => String(s.platoon || '').includes('พิเศษ'));
           } else {
             if (filterWrap) filterWrap.classList.remove('hidden');
           }
+          allStudentsInScope = fetchedStudents;
         } else {
-          const filterWrap = document.getElementById('platoon-type-filter-wrap');
           if (filterWrap) filterWrap.classList.remove('hidden');
         }
 
         const recMap = new Map(records.map(r => [r.uid || r.id, r]));
-        const targetStudentList = (user.role === ROLES.PLATOON && allStudentsInScope.length > 0) ? allStudentsInScope : records;
+        const targetStudentList = (allStudentsInScope.length > 0) ? allStudentsInScope : records;
 
         cachedCombinedRecords = targetStudentList.map(s => {
           const uid = s.uid || s.id;
