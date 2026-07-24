@@ -1027,8 +1027,10 @@ function switchAdminTab(tabId, btn) {
   if (target) target.classList.remove('hidden');
 
   document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+  var targetBtn = btn || document.getElementById('tab-btn-' + tabId);
+  if (targetBtn) targetBtn.classList.add('active');
 
+  if (tabId === 'students') loadStudents();
   if (tabId === 'staff') loadStaff();
   if (tabId === 'attendance') loadAdminAttendanceTab();
   if (tabId === 'rules') loadAdminRulesTab();

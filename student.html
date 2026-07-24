@@ -751,8 +751,10 @@ function switchTab(tab) {
   _activeTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('tab-' + tab + '-btn').classList.add('active');
-  document.getElementById('tab-' + tab).classList.add('active');
+  var btnEl = document.getElementById('tab-' + tab + '-btn');
+  var panelEl = document.getElementById('tab-' + tab);
+  if (btnEl) btnEl.classList.add('active');
+  if (panelEl) panelEl.classList.add('active');
 
   if (tab === 'midday' && _currentUser) {
     loadMiddayTab();

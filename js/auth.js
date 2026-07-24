@@ -282,116 +282,23 @@ document.addEventListener('DOMContentLoaded', function() {
   } catch (e) {}
 });
 
-// ─── SPA Seamless Navigation Router (Zero-Flicker Page Swapper) ───────────────────
-async function navigateSPA(url, pushHistory = true) {
-  try {
-    const targetPage = url.split('/').pop().split('?')[0] || 'index.html';
-    const currentPath = (window.location.pathname.split('/').pop() || 'index.html').split('?')[0];
+// ─── Seamless Navigation Router ───────────────────
+function navigateSPA(url) {
+  if (!url) return;
+  const targetPage = url.split('/').pop().split('?')[0] || 'index.html';
+  const currentPath = (window.location.pathname.split('/').pop() || 'index.html').split('?')[0];
 
-    if (targetPage.toLowerCase() === currentPath.toLowerCase() && !url.includes('#')) {
-      return;
-    }
-
-    const mainEl = document.querySelector('main');
-    if (mainEl) {
-      mainEl.style.transition = 'opacity 0.1s ease';
-      mainEl.style.opacity = '0.3';
-    }
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      window.location.href = url;
-      return;
-    }
-
-    const htmlText = await response.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlText, 'text/html');
-
-    const newMain = doc.querySelector('main');
-    if (!newMain || !mainEl) {
-      window.location.href = url;
-      return;
-    }
-
-    if (doc.title) document.title = doc.title;
-
-    mainEl.innerHTML = newMain.innerHTML;
-    mainEl.className = newMain.className;
-
-    if (pushHistory) {
-      history.pushState({ url }, '', url);
-    }
-
-    const cachedUser = window.currentUser || (function() {
-      try { return JSON.parse(localStorage.getItem('cached_user_profile')); } catch(e) { return null; }
-    })();
-
-    if (typeof renderSidebar === 'function' && cachedUser) {
-      renderSidebar(cachedUser);
-    } else if (typeof setActiveNav === 'function') {
-      setActiveNav();
-    }
-
-    const scripts = doc.querySelectorAll('script');
-    scripts.forEach(s => {
-      if (s.textContent && (
-        s.textContent.includes('loadCommanderView') || 
-        s.textContent.includes('loadCommanderData') || 
-        s.textContent.includes('loadLeaves') || 
-        s.textContent.includes('generateReport') || 
-        s.textContent.includes('loadStaffList')
-      )) {
-        try {
-          const fn = new Function(s.textContent);
-          fn();
-        } catch (err) {
-          console.warn('SPA script eval warning:', err);
-        }
-      }
-    });
-
-    triggerPageInit(targetPage, cachedUser);
-
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    setTimeout(() => {
-      if (mainEl) mainEl.style.opacity = '1';
-    }, 50);
-
-  } catch (e) {
-    console.error('SPA Navigation Error:', e);
-    window.location.href = url;
+  if (targetPage.toLowerCase() === currentPath.toLowerCase() && !url.includes('#')) {
+    return;
   }
-}
-
-function triggerPageInit(pageName, user) {
-  pageName = (pageName || '').toLowerCase();
-  if (pageName === 'midday-check.html') {
-    if (typeof loadCommanderView === 'function') loadCommanderView();
-  } else if (pageName === 'dashboard.html') {
-    if (typeof loadCommanderData === 'function' && user) loadCommanderData(user);
-  } else if (pageName === 'leave-approval.html') {
-    if (typeof loadLeaves === 'function') loadLeaves();
-  } else if (pageName === 'reports.html') {
-    if (typeof generateReport === 'function') generateReport();
-  } else if (pageName === 'admin.html') {
-    if (typeof loadStaffList === 'function') loadStaffList();
-  } else if (pageName === 'student.html') {
-    if (typeof loadStudentData === 'function' && user) loadStudentData(user);
-  }
+  window.location.href = url;
 }
 
 document.addEventListener('click', function(e) {
   var item = e.target.closest('.nav-item');
   if (item && item.href && item.href.includes('.html') && !item.href.includes('index.html')) {
     e.preventDefault();
-    navigateSPA(item.href, true);
-  }
-});
-
-window.addEventListener('popstate', function(e) {
-  if (location.pathname.includes('.html') && !location.pathname.includes('index.html')) {
-    navigateSPA(location.href, false);
+    navigateSPA(item.href);
   }
 });
 
