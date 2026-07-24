@@ -631,7 +631,7 @@
         }
 
         const recMap = new Map(records.map(r => [r.uid || r.id, r]));
-        const targetStudentList = (allStudentsInScope.length > 0) ? allStudentsInScope : records;
+        const targetStudentList = allStudentsInScope;
 
         cachedCombinedRecords = targetStudentList.map(s => {
           const uid = s.uid || s.id;

@@ -221,18 +221,26 @@ async function deleteLeaveRequest(leaveId) {
     try {
       const start = strToDate(leaveData.startDate);
       const end = strToDate(leaveData.endDate);
-      const batch = db.batch();
-      let count = 0;
       for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
         const dateStr = dateToStr(d);
         const ref = db.collection(COLLECTIONS.ATTENDANCE)
                       .doc(dateStr)
                       .collection('records')
                       .doc(leaveData.uid);
-        batch.delete(ref);
-        count++;
+        const docSnap = await ref.get();
+        if (docSnap.exists) {
+          const rec = docSnap.data();
+          if (rec.checkInTime) {
+            await ref.update({
+              status: rec.checkInTime > '08:30:00' ? 'late' : 'present',
+              leaveId: firebase.firestore.FieldValue.delete(),
+              leaveType: firebase.firestore.FieldValue.delete()
+            });
+          } else {
+            await ref.delete();
+          }
+        }
       }
-      if (count > 0) await batch.commit();
     } catch(e) {
       console.warn('Failed to cleanup attendance records for deleted leave:', e);
     }

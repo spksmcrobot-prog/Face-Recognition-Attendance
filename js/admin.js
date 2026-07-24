@@ -37,6 +37,38 @@ async function updateUser(uid, data) {
   });
 }
 
+// ─── Delete Student Account (Cascade Delete User & Attendance/Leave) ───
+async function deleteStudentAccount(uid) {
+  if (!uid) return;
+
+  // 1. Delete user document
+  await db.collection(COLLECTIONS.USERS).doc(uid).delete();
+
+  // 2. Delete all leave requests of this student
+  try {
+    const leaveSnap = await db.collection(COLLECTIONS.LEAVE).where('uid', '==', uid).get();
+    const lBatch = db.batch();
+    leaveSnap.docs.forEach(doc => lBatch.delete(doc.ref));
+    if (!leaveSnap.empty) await lBatch.commit();
+  } catch (e) {
+    console.warn('Failed to delete user leave requests:', e);
+  }
+
+  // 3. Delete all attendance records of this student across all dates
+  try {
+    const attDatesSnap = await db.collection(COLLECTIONS.ATTENDANCE).get();
+    for (const dateDoc of attDatesSnap.docs) {
+      const userRecRef = dateDoc.ref.collection('records').doc(uid);
+      const userRecSnap = await userRecRef.get();
+      if (userRecSnap.exists) {
+        await userRecRef.delete();
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to delete user attendance records:', e);
+  }
+}
+
 // ─── Toggle User Active ───────────────────────────────────────
 async function toggleUserActive(uid, active) {
   await db.collection(COLLECTIONS.USERS).doc(uid).update({ active });

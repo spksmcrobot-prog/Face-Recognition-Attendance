@@ -1197,6 +1197,7 @@ function renderStudentsTable(list) {
               <div class="flex justify-end gap-1.5">
                 ${canEdit ? `<button onclick="openEditStudent('${s.id}')" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.65rem] font-bold text-slate-600 hover:bg-slate-200 transition">แก้ไข</button>` : ''}
                 <button onclick="openFaceEnroll('${s.id}','${escapeHtml(s.name)}')" class="rounded-lg bg-sky-50 px-2.5 py-1.5 text-[0.65rem] font-bold text-sky-600 hover:bg-sky-100 transition">📸 Face ID</button>
+                ${canEdit ? `<button onclick="confirmDeleteStudent('${s.id}','${escapeHtml(s.name)}')" class="rounded-lg bg-rose-50 px-2.5 py-1.5 text-[0.65rem] font-bold text-rose-600 hover:bg-rose-100 transition">🗑️ ลบ</button>` : ''}
               </div>
             </td>
           </tr>`;
@@ -1204,6 +1205,25 @@ function renderStudentsTable(list) {
       </tbody>
     </table>
   `;
+}
+
+async function confirmDeleteStudent(uid, name) {
+  var confirmed = await showConfirmPopup(
+    'ลบบัญชี นศท. และประวัติทั้งหมด?',
+    'คุณกำลังจะลบบัญชีของ "' + name + '" พร้อมกับลบประวัติการเช็คชื่อและใบลาทั้งหมดของ นศท. รายนี้ออกจากระบบ การกระทำนี้ไม่สามารถย้อนกลับได้!',
+    'ลบบัญชีและประวัติ',
+    'ยกเลิก',
+    'warning'
+  );
+  if (!confirmed) return;
+
+  try {
+    await deleteStudentAccount(uid);
+    showToast('ลบบัญชี นศท. และประวัติทั้งหมดเรียบร้อยแล้ว', 'success');
+    loadStudents();
+  } catch(e) {
+    showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+  }
 }
 
 function openModal(id) {
@@ -1783,7 +1803,7 @@ async function purgeSystemData(type) {
   });
 
   try {
-    if (type === 'attendance' || type === 'all') {
+    if (type === 'attendance' || type === 'students' || type === 'all') {
       // 1. Delete all Attendance records
       const attDatesSnap = await db.collection(COLLECTIONS.ATTENDANCE).get();
       for (const dateDoc of attDatesSnap.docs) {
