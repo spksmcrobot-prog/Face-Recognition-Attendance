@@ -111,7 +111,7 @@ async function guardPage(allowedRoles = []) {
 // ─── Create Account (Admin use) ──────────────────────────────
 async function createStudentAccount(studentData) {
   const { studentId, birthdate, name, role, company, platoon,
-          school, center, year, program, nationalId } = studentData;
+          school, center, year, program, nationalId, contactEmail, phone } = studentData;
 
   const isStudent = !role || role === ROLES.STUDENT;
   const username  = isStudent ? (studentId || nationalId || '') : studentId;
@@ -129,7 +129,10 @@ async function createStudentAccount(studentData) {
     school: school || '', center: center || '',
     year: year || '', program: program || '',
     nationalId: nationalId || '', birthdate: birthdate || '',
-    email: email, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    email: email,
+    contactEmail: (contactEmail || studentData.email || '').trim(),
+    phone: (phone || studentData.phone || '').trim(),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 
   return uid;

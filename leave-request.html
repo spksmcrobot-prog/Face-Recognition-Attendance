@@ -95,6 +95,20 @@
                 <input type="hidden" id="leave-type" value="personal">
               </div>
 
+              <!-- Contact Info -->
+              <div class="mb-6 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-xs font-bold text-slate-600">อีเมลรับแจ้งผลพิจารณา <span class="text-rose-500">*</span></label>
+                  <input type="email" id="student-email" required placeholder="example@gmail.com"
+                    class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-forest-600 outline-none transition">
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-xs font-bold text-slate-600">เบอร์โทรศัพท์ติดต่อ <span class="text-rose-500">*</span></label>
+                  <input type="tel" id="student-phone" required placeholder="08x-xxx-xxxx"
+                    class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-forest-600 outline-none transition">
+                </div>
+              </div>
+
               <!-- Date Range -->
               <div class="leave-date-grid">
                 <div>
@@ -242,6 +256,17 @@ function populateUserInfo(user) {
   document.getElementById('lr-company').textContent = user.company ? 'ปี ' + user.company : '-';
   document.getElementById('lr-school').textContent  = user.school || '-';
   document.getElementById('lr-school').title        = user.school || '';
+
+  const emailInput = document.getElementById('student-email');
+  const phoneInput = document.getElementById('student-phone');
+  if (emailInput && !emailInput.value) {
+    const contactEmail = user.contactEmail || (user.email && !user.email.endsWith('@nstda.system') ? user.email : '');
+    emailInput.value = contactEmail || '';
+  }
+  if (phoneInput && !phoneInput.value) {
+    phoneInput.value = user.phone || user.contactPhone || '';
+  }
+
   var av = document.getElementById('lr-avatar');
   if (user.profilePhotoUrl) av.innerHTML = `<img src="${user.profilePhotoUrl}" class="w-full h-full object-cover">`;
   else av.textContent = initials(user.name);
@@ -310,10 +335,12 @@ document.getElementById('leave-form').addEventListener('submit', async e => {
 
   try {
     await submitLeaveRequest(currentUser.uid, currentUser, {
-      type:      document.getElementById('leave-type').value,
-      startDate: document.getElementById('start-date').value,
-      endDate:   document.getElementById('end-date').value,
-      reason:    document.getElementById('reason').value.trim(),
+      type:         document.getElementById('leave-type').value,
+      startDate:    document.getElementById('start-date').value,
+      endDate:      document.getElementById('end-date').value,
+      studentEmail: document.getElementById('student-email').value.trim(),
+      studentPhone: document.getElementById('student-phone').value.trim(),
+      reason:       document.getElementById('reason').value.trim(),
     }, selectedFile);
 
     document.querySelector('.grid').classList.add('hidden');

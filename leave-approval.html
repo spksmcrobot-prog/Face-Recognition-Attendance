@@ -160,6 +160,17 @@
           </div>
         </div>
 
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="rounded-xl bg-slate-50 p-3">
+            <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide mb-1">📧 อีเมลรับแจ้งผล</p>
+            <p class="text-xs font-bold text-forest-900 truncate" id="md-email" title="">--</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 p-3">
+            <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide mb-1">📞 เบอร์โทรติดต่อ</p>
+            <p class="text-xs font-bold text-forest-900" id="md-phone">--</p>
+          </div>
+        </div>
+
         <div class="rounded-xl bg-slate-50 p-4 mb-4">
           <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wide mb-1.5">วันที่ลา</p>
           <div class="flex justify-between items-center text-sm font-medium">
@@ -272,10 +283,10 @@ async function loadLeaves() {
     if (currentUser.role === ROLES.PLATOON) {
       if (currentUser.company) filters.company = currentUser.company;
       if (currentUser.platoon) filters.platoon = currentUser.platoon;
-      if (currentUser.track) filters.track = currentUser.track;
+      filters.track = currentUser.track || (String(currentUser.platoon || '').includes('พิเศษ') ? 'special' : 'regular');
     } else if (currentUser.role === ROLES.COMPANY) {
       if (currentUser.company) filters.company = currentUser.company;
-      if (currentUser.track) filters.track = currentUser.track;
+      filters.track = currentUser.track || 'regular';
     }
   }
 
@@ -370,6 +381,9 @@ async function openDetail(leaveId) {
   document.getElementById('md-start').textContent = formatDateThai(leave.startDate);
   document.getElementById('md-end').textContent   = formatDateThai(leave.endDate);
   document.getElementById('md-reason').textContent = leave.reason || '-';
+  document.getElementById('md-email').textContent  = leave.studentEmail || '-';
+  document.getElementById('md-email').title        = leave.studentEmail || '';
+  document.getElementById('md-phone').textContent  = leave.studentPhone || '-';
 
   var _activeEvidenceUrl = leave.evidenceUrl || '';
   if (_activeEvidenceUrl) {

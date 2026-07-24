@@ -83,8 +83,8 @@
           </div>
           <div class="flex flex-wrap gap-2">
             <button onclick="downloadCSVTemplate()" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-50">📄 Template CSV</button>
-            <button onclick="openImportModal()" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100">📥 Import CSV</button>
-            <button onclick="openAddStudentModal()" class="rounded-xl bg-forest-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700">+ เพิ่ม นศท.</button>
+            <button id="btn-import-csv" onclick="openImportModal()" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100">📥 Import CSV</button>
+            <button id="btn-add-student" onclick="openAddStudentModal()" class="rounded-xl bg-forest-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700">+ เพิ่ม นศท.</button>
           </div>
         </div>
 
@@ -429,6 +429,19 @@
         </div>
 
         <div class="grid gap-6 lg:grid-cols-2">
+          <!-- GAS Web App URL Setting -->
+          <div class="card p-6 col-span-1 lg:col-span-2 border-2 border-emerald-500/20 bg-gradient-to-br from-white via-white to-emerald-50/30">
+            <h3 class="font-extrabold text-forest-900 text-lg mb-2 flex items-center gap-2">
+              <span class="text-xl">📧</span> ตั้งค่า Google Apps Script Web App URL (ระบบส่งอีเมล)
+            </h3>
+            <p class="text-sm text-slate-500 mb-4 font-medium">วาง URL ที่ได้จากการ Deploy Google Apps Script Web App เพื่อเปิดใช้งานการส่งอีเมลแจ้งเตือนใบขอลา ผลการอนุมัติ และรายงานประจำวันสำหรับโรงเรียน</p>
+            <div class="flex flex-col sm:flex-row gap-3">
+              <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/AKfycbx.../exec" class="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+              <button onclick="saveGASUrlSetting()" class="rounded-xl bg-forest-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700 whitespace-nowrap">💾 บันทึก Web App URL</button>
+            </div>
+            <p class="text-xs text-slate-500 mt-2.5 font-bold" id="gas-url-status">สถานะ: กำลังตรวจสอบ...</p>
+          </div>
+
           <div class="card p-6">
             <h3 class="font-bold text-forest-900 mb-5 flex items-center gap-2"><span>⚠️</span> การดำเนินการด้านระบบ</h3>
             <div class="flex flex-col gap-3">
@@ -536,6 +549,14 @@
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">รหัสสถานศึกษา</label>
             <input id="s-schoolCode" placeholder="รหัสโรงเรียน" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
           </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">อีเมลติดต่อ (Email)</label>
+            <input id="s-email" type="email" placeholder="เช่น student@gmail.com" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">เบอร์โทรศัพท์</label>
+            <input id="s-phone" type="tel" placeholder="08x-xxx-xxxx" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
           <div class="sm:col-span-2">
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ศูนย์ / สังกัด <span class="text-rose-500">*</span></label>
             <input id="s-center" placeholder="เช่น ศูนย์การฝึกนักศึกษาวิชาทหาร" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
@@ -606,6 +627,10 @@
           <div>
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ชื่อ-นามสกุล <span class="text-rose-500">*</span></label>
             <input id="st-name" placeholder="ชื่อ-นามสกุล" required class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">อีเมลรับแจ้งเตือนใบลา (Email)</label>
+            <input id="st-email" type="email" placeholder="เช่น teacher@gmail.com" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
           </div>
           <div class="sm:col-span-2" id="st-birth-wrap">
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">รหัสผ่านเริ่มต้น (วันเกิด) <span class="text-rose-500">*</span></label>
@@ -889,7 +914,7 @@ function switchAdminTab(tabId, btn) {
   if (tabId === 'attendance') loadAdminAttendanceTab();
   if (tabId === 'rules') loadAdminRulesTab();
   if (tabId === 'geofence') loadGeoSettings();
-  if (tabId === 'system') loadSysStats();
+  if (tabId === 'system') { loadSysStats(); loadGASUrlSetting(); }
 }
 
 // ─── Students ─────────────────────────────────────────────────
@@ -899,6 +924,14 @@ async function loadStudents() {
   try {
     var snap = await db.collection(COLLECTIONS.USERS).where('role','==',ROLES.STUDENT).get();
     allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Restrict student creation/import for Role 4 and lower
+    var addStudentBtn = document.getElementById('btn-add-student');
+    var importCsvBtn  = document.getElementById('btn-import-csv');
+    if (currentUser && currentUser.role < ROLES.INSTRUCTOR) {
+      if (addStudentBtn) addStudentBtn.style.display = 'none';
+      if (importCsvBtn) importCsvBtn.style.display = 'none';
+    }
 
     if (currentUser && currentUser.role === ROLES.COMPANY && currentUser.company) {
       var cpSelect = document.getElementById('filter-s-company');
@@ -937,6 +970,20 @@ function filterStudents() {
     if (cp && String(s.company) !== String(cp)) return false;
     if (pl && String(s.platoon||'').trim() !== String(pl).trim()) return false;
     if (sc && !(s.school||'').toLowerCase().includes(sc)) return false;
+
+    // Strict role/gender track filtering for Platoon (Role 2) and Company (Role 3) commanders
+    if (currentUser) {
+      if (currentUser.role === ROLES.PLATOON && currentUser.platoon) {
+        if (String(s.platoon || '').trim() !== String(currentUser.platoon).trim()) return false;
+      } else if (currentUser.role === ROLES.COMPANY) {
+        if (currentUser.company && String(s.company) !== String(currentUser.company)) return false;
+        var userTrack = currentUser.track || 'regular';
+        var isSpecialPlatoon = String(s.platoon || '').includes('พิเศษ');
+        if (userTrack === 'special' && !isSpecialPlatoon) return false;
+        if (userTrack === 'regular' && isSpecialPlatoon) return false;
+      }
+    }
+
     return true;
   });
 
@@ -955,6 +1002,8 @@ function renderStudentsTable(list) {
     if(a.platoon !== b.platoon) return String(a.platoon||'').localeCompare(String(b.platoon||''));
     return String(a.studentId||'').localeCompare(String(b.studentId||''));
   });
+
+  var canEdit = currentUser && currentUser.role >= ROLES.INSTRUCTOR;
 
   el.innerHTML = `
     <table class="w-full text-left border-collapse min-w-[800px]">
@@ -996,7 +1045,7 @@ function renderStudentsTable(list) {
           </td>
           <td class="px-4 py-3 text-right">
             <div class="flex justify-end gap-1.5">
-              <button onclick="openEditStudent('${s.id}')" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.65rem] font-bold text-slate-600 hover:bg-slate-200 transition">แก้ไข</button>
+              ${canEdit ? `<button onclick="openEditStudent('${s.id}')" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[0.65rem] font-bold text-slate-600 hover:bg-slate-200 transition">แก้ไข</button>` : ''}
               <button onclick="openFaceEnroll('${s.id}','${escapeHtml(s.name)}')" class="rounded-lg bg-sky-50 px-2.5 py-1.5 text-[0.65rem] font-bold text-sky-600 hover:bg-sky-100 transition">📸 Face ID</button>
             </div>
           </td>
@@ -1024,8 +1073,11 @@ function closeModal(id) {
 function openAddStudentModal() {
   document.getElementById('edit-student-uid').value = '';
   document.getElementById('student-modal-title').textContent = 'เพิ่ม นศท. ใหม่';
-  ['s-studentId','s-name','s-birthdate','s-nationalId','s-company','s-platoon','s-school','s-schoolCode','s-center']
-    .forEach(id => document.getElementById(id).value = '');
+  ['s-studentId','s-name','s-birthdate','s-nationalId','s-company','s-platoon','s-school','s-schoolCode','s-center','s-email','s-phone']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
   document.getElementById('s-studentId').disabled = false;
   openModal('add-student-modal');
 }
@@ -1045,21 +1097,25 @@ function openEditStudent(uid) {
   document.getElementById('s-school').value       = s.school || '';
   document.getElementById('s-schoolCode').value   = s.schoolCode || '';
   document.getElementById('s-center').value       = s.center || '';
+  document.getElementById('s-email').value        = s.contactEmail || s.email || '';
+  document.getElementById('s-phone').value        = s.phone || s.contactPhone || '';
   openModal('add-student-modal');
 }
 
 async function saveStudent() {
   var uid = document.getElementById('edit-student-uid').value;
   var data = {
-    studentId:  document.getElementById('s-studentId').value.trim(),
-    name:       document.getElementById('s-name').value.trim(),
-    birthdate:  document.getElementById('s-birthdate').value.trim(),
-    nationalId: document.getElementById('s-nationalId').value.trim(),
-    company:    document.getElementById('s-company').value,
-    platoon:    document.getElementById('s-platoon').value.trim(),
-    school:     document.getElementById('s-school').value.trim(),
-    schoolCode: document.getElementById('s-schoolCode').value.trim(),
-    center:     document.getElementById('s-center').value.trim(),
+    studentId:    document.getElementById('s-studentId').value.trim(),
+    name:         document.getElementById('s-name').value.trim(),
+    birthdate:    document.getElementById('s-birthdate').value.trim(),
+    nationalId:   document.getElementById('s-nationalId').value.trim(),
+    company:      document.getElementById('s-company').value,
+    platoon:      document.getElementById('s-platoon').value.trim(),
+    school:       document.getElementById('s-school').value.trim(),
+    schoolCode:   document.getElementById('s-schoolCode').value.trim(),
+    center:       document.getElementById('s-center').value.trim(),
+    contactEmail: document.getElementById('s-email').value.trim(),
+    phone:        document.getElementById('s-phone').value.trim(),
   };
 
   if (!data.studentId || !data.name || !data.birthdate || !data.nationalId) {
@@ -1223,12 +1279,13 @@ function openAddStaffModal() {
   document.getElementById('st-id').value = '';
   document.getElementById('st-id').disabled = false;
   document.getElementById('st-name').value = '';
+  document.getElementById('st-email').value = '';
   document.getElementById('st-birth').value = '';
   document.getElementById('st-birth-wrap').style.display = 'block';
   document.getElementById('st-company').value = '1';
   document.getElementById('st-platoon').value = '';
   document.getElementById('st-track').value = 'regular';
-  document.getElementById('st-role').value = '3';
+  document.getElementById('st-role').value = '5';
   toggleStaffFields();
   openModal('add-staff-modal'); 
 }
@@ -1245,9 +1302,10 @@ async function openEditStaffModal(uid) {
     document.getElementById('st-id').value = s.studentId || '';
     document.getElementById('st-id').disabled = true;
     document.getElementById('st-name').value = s.name || '';
+    document.getElementById('st-email').value = s.contactEmail || (s.email && !s.email.endsWith('@nstda.system') ? s.email : '');
     document.getElementById('st-birth').value = '';
     document.getElementById('st-birth-wrap').style.display = 'none';
-    document.getElementById('st-role').value = s.role || '3';
+    document.getElementById('st-role').value = s.role || '5';
     document.getElementById('st-company').value = s.company || '1';
     document.getElementById('st-platoon').value = s.platoon || '';
     document.getElementById('st-track').value = s.track || 'regular';
@@ -1266,6 +1324,7 @@ async function saveStaff() {
 
   try {
     var name = document.getElementById('st-name').value.trim();
+    var email = document.getElementById('st-email').value.trim();
     var role = parseInt(document.getElementById('st-role').value);
     var company = document.getElementById('st-company').value.trim();
     var platoon = document.getElementById('st-platoon').value.trim();
@@ -1281,6 +1340,8 @@ async function saveStaff() {
     if (stUid) {
       await db.collection(COLLECTIONS.USERS).doc(stUid).update({
         name: name,
+        contactEmail: email,
+        email: email || `${document.getElementById('st-id').value}@nstda.system`,
         role: role,
         company: company,
         platoon: platoon,
@@ -1292,6 +1353,7 @@ async function saveStaff() {
       await adminCreateUser({
         studentId: document.getElementById('st-id').value.trim(),
         name: name,
+        contactEmail: email,
         birthdate: document.getElementById('st-birth').value,
         role: role,
         company: company,
@@ -1371,6 +1433,56 @@ async function loadSysStats() {
   document.getElementById('sys-staff').textContent    = stats.staff;
   document.getElementById('sys-today').textContent    = stats.todayAtt;
   document.getElementById('sys-schools').textContent  = stats.schools;
+}
+
+// ─── GAS Web App URL Setting ───────────────────────────────
+async function loadGASUrlSetting() {
+  var statusEl = document.getElementById('gas-url-status');
+  var inputEl  = document.getElementById('gas-url-input');
+  if (!inputEl) return;
+
+  var currentUrl = localStorage.getItem('gas_web_app_url') || '';
+  try {
+    var snap = await db.collection(COLLECTIONS.SETTINGS).doc('gas').get();
+    if (snap.exists && snap.data().url) {
+      currentUrl = snap.data().url;
+      localStorage.setItem('gas_web_app_url', currentUrl);
+    }
+  } catch(e) {}
+
+  inputEl.value = currentUrl;
+  if (currentUrl) {
+    statusEl.textContent = '✅ ตั้งค่าใช้งานแล้ว: ' + currentUrl;
+    statusEl.className   = 'text-xs text-emerald-600 font-bold mt-2.5';
+  } else {
+    statusEl.textContent = '⚠️ ยังไม่ได้ระบุ Web App URL (ใช้ค่าเริ่มต้นระบบ)';
+    statusEl.className   = 'text-xs text-amber-600 font-bold mt-2.5';
+  }
+}
+
+async function saveGASUrlSetting() {
+  var inputEl  = document.getElementById('gas-url-input');
+  var statusEl = document.getElementById('gas-url-status');
+  var url = (inputEl.value || '').trim();
+
+  if (url && !url.startsWith('http')) {
+    showToast('กรุณากรอก Web App URL ให้ถูกต้อง (ขึ้นต้นด้วย https://)', 'warning');
+    return;
+  }
+
+  try {
+    localStorage.setItem('gas_web_app_url', url);
+    await db.collection(COLLECTIONS.SETTINGS).doc('gas').set({
+      url: url,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentUser ? currentUser.uid : 'admin'
+    }, { merge: true });
+
+    showToast('บันทึก Google Apps Script URL เรียบร้อย', 'success');
+    loadGASUrlSetting();
+  } catch(e) {
+    showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+  }
 }
 
 async function markAbsentAll() {

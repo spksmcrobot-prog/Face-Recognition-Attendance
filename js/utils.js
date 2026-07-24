@@ -165,7 +165,7 @@ async function checkLocationInGeofence() {
 // ─── Toast Notifications ─────────────────────────────────────
 // Leave and Round Status are defined in firebase-config.js
 
-function showToast(msg, type = null, duration = 2200) {
+function showToast(msg, type = 'success', duration = 3000) {
   // ── Smart Icon Detection ────────────────────────────────────
   if (!type || type === 'info') {
     if (/(สำเร็จ|เรียบร้อย|อนุมัติ|ดึงพิกัด|บันทึก|เพิ่ม|ลบ|เข้าสู่ระบบ|เช็คชื่อ|เช็คเข้า|เช็คออก|ส่ง)/.test(msg)

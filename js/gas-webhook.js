@@ -8,18 +8,23 @@ const GAS_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
 // ─── Send Leave Notification to Instructor ──────────────────
 async function notifyLeaveRequest(leaveData, instructorEmails) {
   const payload = {
-    action:      'LEAVE_REQUEST',
-    studentName: leaveData.studentName,
-    studentId:   leaveData.studentId,
-    leaveType:   leaveTypeName(leaveData.type),
-    startDate:   formatDateThai(leaveData.startDate),
-    endDate:     formatDateThai(leaveData.endDate),
-    days:        daysBetween(leaveData.startDate, leaveData.endDate),
-    reason:      leaveData.reason,
-    evidenceUrl: leaveData.evidenceUrl || '',
-    leaveId:     leaveData.id,
-    approvalUrl: `${window.location.origin}/leave-approval.html?id=${leaveData.id}`,
-    recipients:  instructorEmails,
+    action:       'LEAVE_REQUEST',
+    studentName:  leaveData.studentName,
+    studentId:    leaveData.studentId,
+    studentEmail: leaveData.studentEmail || '',
+    studentPhone: leaveData.studentPhone || '',
+    company:      leaveData.company || '',
+    platoon:      leaveData.platoon || '',
+    school:       leaveData.school || '',
+    leaveType:    leaveTypeName(leaveData.type),
+    startDate:    formatDateThai(leaveData.startDate),
+    endDate:      formatDateThai(leaveData.endDate),
+    days:         daysBetween(leaveData.startDate, leaveData.endDate),
+    reason:       leaveData.reason,
+    evidenceUrl:  leaveData.evidenceUrl || '',
+    leaveId:      leaveData.id,
+    approvalUrl:  `${window.location.origin}/leave-approval.html?id=${leaveData.id}`,
+    recipients:   instructorEmails,
   };
   return callGAS(payload);
 }
@@ -27,14 +32,15 @@ async function notifyLeaveRequest(leaveData, instructorEmails) {
 // ─── Send Approval Result to Student ────────────────────────
 async function notifyLeaveResult(leaveData, approved, note = '') {
   const payload = {
-    action:      approved ? 'LEAVE_APPROVED' : 'LEAVE_REJECTED',
-    studentName: leaveData.studentName,
-    studentEmail:`${leaveData.studentId}@nstda.system`,
-    leaveType:   leaveTypeName(leaveData.type),
-    startDate:   formatDateThai(leaveData.startDate),
-    endDate:     formatDateThai(leaveData.endDate),
+    action:       approved ? 'LEAVE_APPROVED' : 'LEAVE_REJECTED',
+    studentName:  leaveData.studentName,
+    studentId:    leaveData.studentId,
+    studentEmail: leaveData.studentEmail || '',
+    leaveType:    leaveTypeName(leaveData.type),
+    startDate:    formatDateThai(leaveData.startDate),
+    endDate:      formatDateThai(leaveData.endDate),
     note,
-    recipients:  [leaveData.studentEmail || ''],
+    recipients:   [leaveData.studentEmail].filter(Boolean),
   };
   return callGAS(payload);
 }
@@ -56,12 +62,19 @@ async function sendDailySummaryToSchool(schoolData, summaryData, dateStr) {
 
 // ─── Generic GAS Call ────────────────────────────────────────
 async function callGAS(payload) {
-  if (!GAS_URL || GAS_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
-    console.warn('GAS URL not configured. Email not sent.', payload);
+  let url = (typeof GAS_URL !== 'undefined') ? GAS_URL : '';
+  try {
+    const savedUrl = localStorage.getItem('gas_web_app_url');
+    if (savedUrl && savedUrl.trim()) url = savedUrl.trim();
+  } catch(e) {}
+
+  if (!url || url === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+    console.warn('GAS URL not configured. Email payload:', payload);
     return { skipped: true };
   }
+
   try {
-    const res = await fetch(GAS_URL, {
+    await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

@@ -62,13 +62,44 @@ async function sendReportToSchools(dateStr) {
     const records = await getSchoolRecordsForDate(dateStr, school.name);
     if (!records.length) continue;
     const summaryData = {
-      students: records.map(r => ({ studentId: r.studentId, name: r.name, status: statusTextTh(r.status) })),
+      students: records.map(r => ({
+        studentId: r.studentId,
+        name:      r.name,
+        company:   r.company || '',
+        platoon:   r.platoon || '',
+        status:    statusTextTh(r.status)
+      })),
       stats: computeStats(records),
     };
     const result = await sendDailySummaryToSchool(school, summaryData, dateStr);
     results.push({ school: school.name, ...result });
   }
   return results;
+}
+
+async function sendDailyReportsAllSchools(targetDate) {
+  const dateInput = document.getElementById('report-start-date') || document.getElementById('report-end-date');
+  const dateStr = targetDate || (dateInput ? dateInput.value : today());
+
+  const confirm = await showConfirmPopup(
+    'ส่งรายงานสรุปเข้าอีเมลทุกโรงเรียน?',
+    `คุณต้องการส่งสรุปยอดการเช็คชื่อ (มา, ขาด, สาย, ลา) ประจำวันที่ ${formatDateThai(dateStr)} ไปยังอาจารย์ผู้รับผิดชอบของทุกสถานศึกษาใช่หรือไม่?`,
+    'ส่งอีเมลรายงาน',
+    'ยกเลิก',
+    'question'
+  );
+  if (!confirm) return;
+
+  try {
+    const results = await sendReportToSchools(dateStr);
+    if (!results || !results.length) {
+      showToast('ไม่พบโรงเรียนที่ระบุอีเมลผู้ดูแล หรือไม่มีบันทึกเวลาเรียนในวันที่เลือก', 'warning');
+      return;
+    }
+    showToast(`ส่งรายงานสรุปไปยัง ${results.length} สถานศึกษาเรียบร้อยแล้ว`, 'success');
+  } catch(e) {
+    showAlertPopup('เกิดข้อผิดพลาด', 'ไม่สามารถส่งรายงานได้: ' + e.message, 'error');
+  }
 }
 
 async function getSchoolRecordsForDate(dateStr, schoolName) {

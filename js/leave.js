@@ -19,10 +19,11 @@ async function submitLeaveRequest(uid, userData, formData, evidenceFile) {
     uid,
     studentId:    userData.studentId,
     studentName:  userData.name,
-    studentEmail: userData.email || `${userData.studentId}@nstda.system`,
-    company:      userData.company,
-    platoon:      userData.platoon,
-    school:       userData.school,
+    studentEmail: (formData.studentEmail || userData.contactEmail || userData.email || '').trim(),
+    studentPhone: (formData.studentPhone || userData.phone || userData.contactPhone || '').trim(),
+    company:      userData.company || '',
+    platoon:      userData.platoon || '',
+    school:       userData.school || '',
     type:         formData.type,         // 'personal' | 'sick'
     startDate:    formData.startDate,
     endDate:      formData.endDate,
@@ -113,6 +114,16 @@ async function getLeaveRequests(filters = {}) {
     leaves.push({ id: d.id, ...d.data() });
   });
 
+  // Strict track/gender filtering for platoon & company leaders
+  if (filters.track && filters.track !== 'all') {
+    leaves = leaves.filter(l => {
+      const isSpecialPlatoon = String(l.platoon || '').includes('พิเศษ');
+      if (filters.track === 'special') return isSpecialPlatoon || l.track === 'special';
+      if (filters.track === 'regular') return !isSpecialPlatoon && l.track !== 'special';
+      return true;
+    });
+  }
+
   // Sort by createdAt descending in JS to avoid Firestore composite index requirements
   leaves.sort((a, b) => {
     const timeA = a.createdAt ? a.createdAt.toMillis() : 0;
@@ -129,12 +140,32 @@ async function getLeaveRequest(leaveId) {
   return snap.exists ? { id: snap.id, ...snap.data() } : null;
 }
 
-// ─── Get Instructor Emails ────────────────────────────────────
+// ─── Get Instructor Emails (Role 5 & Role 6) ──────────────────
 async function getInstructorEmails() {
-  const snap = await db.collection(COLLECTIONS.USERS)
-                       .where('role','==', ROLES.INSTRUCTOR)
-                       .get();
-  return snap.docs.map(d => d.data().email).filter(Boolean);
+  const emails = new Set();
+  try {
+    const snap = await db.collection(COLLECTIONS.USERS)
+                         .where('role','>=', ROLES.INSTRUCTOR)
+                         .get();
+    snap.docs.forEach(d => {
+      const u = d.data();
+      const em = u.contactEmail || u.email;
+      if (em && em.includes('@') && !em.endsWith('@nstda.system')) {
+        emails.add(em.trim());
+      }
+    });
+  } catch(e) {
+    console.warn('Error fetching instructor emails:', e);
+  }
+
+  try {
+    const sysSnap = await db.collection(COLLECTIONS.SETTINGS).doc('gas').get();
+    if (sysSnap.exists && sysSnap.data().adminEmail) {
+      emails.add(sysSnap.data().adminEmail.trim());
+    }
+  } catch(e) {}
+
+  return Array.from(emails);
 }
 
 // ─── Cancel Leave (student) ───────────────────────────────────
