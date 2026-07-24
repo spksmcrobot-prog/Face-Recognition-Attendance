@@ -504,12 +504,11 @@ function renderSavedAccountsList() {
   accounts.forEach(a => {
     const isCurrent = a.uid === currentUid;
     const roleName = ROLE_NAMES[a.role] || 'ผู้ใช้งาน';
-    const safeBirthdate = escapeHtml(a.birthdate || '');
     const safeStudentId = escapeHtml(a.studentId || '');
     
     html += `
       <div class="flex items-center justify-between p-3 rounded-xl border ${isCurrent ? 'border-forest-600 bg-forest-50/30' : 'border-slate-100 bg-white hover:border-forest-100'} transition gap-2">
-        <div class="flex items-center gap-3 cursor-pointer min-w-0 flex-1" ${isCurrent ? '' : `onclick="switchAccount('${safeStudentId}', '${safeBirthdate}')"`}>
+        <div class="flex items-center gap-3 cursor-pointer min-w-0 flex-1" ${isCurrent ? '' : `onclick="switchAccountByStudentId('${safeStudentId}')"`}>
           <div class="grid h-8 w-8 shrink-0 place-items-center rounded-lg ${isCurrent ? 'bg-forest-600 text-white' : 'bg-slate-50 text-forest-700'} text-[10px] font-bold">
             ${initials(a.name || 'น ศ')}
           </div>
@@ -587,6 +586,13 @@ async function handleSwitchAddAccountSubmit(event) {
   }
 }
 
+async function switchAccountByStudentId(studentId) {
+  if (!studentId) return;
+  const saved = getSavedAccounts().find(a => a.studentId === studentId);
+  const birthdate = saved ? saved.birthdate : '';
+  await switchAccount(studentId, birthdate);
+}
+
 async function switchAccount(studentId, birthdate) {
   if (!studentId) return;
 
@@ -610,11 +616,6 @@ async function switchAccount(studentId, birthdate) {
     }
 
     const stdBirthdate = (typeof standardizeBirthdate === 'function') ? standardizeBirthdate(cleanBirthdate) : cleanBirthdate;
-    
-    // Sign out current user first to ensure clean state
-    if (typeof auth !== 'undefined' && auth.currentUser) {
-      await auth.signOut().catch(() => {});
-    }
 
     const cred = await login(studentId, stdBirthdate);
     const userSnap = await db.collection(COLLECTIONS.USERS).doc(cred.user.uid).get();
