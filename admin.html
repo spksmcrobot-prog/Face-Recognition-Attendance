@@ -431,39 +431,33 @@
         </div>
 
         <div class="grid gap-6 lg:grid-cols-2">
-          <!-- GAS Web App URL & Approver Email Setting -->
+          <!-- GAS Web App URL Setting -->
           <div class="card p-6 col-span-1 lg:col-span-2 border-2 border-emerald-500/20 bg-gradient-to-br from-white via-white to-emerald-50/30 space-y-4">
             <div>
               <h3 class="font-extrabold text-forest-900 text-lg mb-1 flex items-center gap-2">
                 <span class="text-xl">📧</span> ตั้งค่าระบบส่งอีเมลแจ้งเตือนใบลาอัตโนมัติ (Google Apps Script)
               </h3>
-              <p class="text-sm text-slate-500 font-medium">เมื่อ นศท. กดขอลา ระบบจะส่งอีเมลแจ้งเตือนไปยังอีเมลของผู้อนุมัติใบลาที่ตั้งไว้ทันที</p>
+              <p class="text-sm text-slate-500 font-medium">ระบุ Web App URL จาก Google Apps Script เพื่อส่งอีเมลแจ้งเตือนใบลาไปยังอีเมลของครูฝึกผู้อนุมัติใบลาโดยอัตโนมัติ</p>
             </div>
 
-            <div class="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">Web App URL (จาก Google Apps Script)</label>
-                <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/AKfycb.../exec" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
-              </div>
-              <div>
-                <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">อีเมลผู้อนุมัติสำหรับรับแจ้งเตือนใบขอลา (Approver Email)</label>
-                <input type="email" id="gas-approver-email-input" placeholder="เช่น teacher@gmail.com" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
-              </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">Web App URL (จาก Google Apps Script) <span class="text-rose-500">*</span></label>
+              <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/AKfycb.../exec" class="w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-sm font-bold text-forest-900 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition shadow-xs">
             </div>
 
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
               <p class="text-xs text-slate-500 font-bold" id="gas-url-status">สถานะ: กำลังตรวจสอบ...</p>
-              <button onclick="saveGASUrlSetting()" class="rounded-xl bg-forest-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700 whitespace-nowrap">💾 บันทึกการตั้งค่าการส่งอีเมล</button>
+              <button onclick="saveGASUrlSetting()" class="rounded-xl bg-forest-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-forest-700 whitespace-nowrap cursor-pointer">💾 บันทึกการตั้งค่า Web App URL</button>
             </div>
           </div>
 
           <div class="card p-6">
             <h3 class="font-bold text-forest-900 mb-5 flex items-center gap-2"><span>⚠️</span> การดำเนินการด้านระบบ</h3>
             <div class="flex flex-col gap-3">
-              <button onclick="markAbsentAll()" class="w-full rounded-xl border border-rose-200 bg-rose-50 py-3.5 px-4 text-left text-sm font-bold text-rose-600 transition hover:bg-rose-100 flex items-center gap-3">
+              <button onclick="markAbsentAll()" class="w-full rounded-xl border border-rose-200 bg-rose-50 py-3.5 px-4 text-left text-sm font-bold text-rose-600 transition hover:bg-rose-100 flex items-center gap-3 cursor-pointer">
                 <span class="text-lg">✗</span> บันทึก "ขาด" อัตโนมัติสำหรับผู้ที่ยังไม่เช็คชื่อวันนี้
               </button>
-              <a href="reports.html" class="w-full rounded-xl border border-emerald-200 bg-emerald-50 py-3.5 px-4 text-left text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 flex items-center gap-3">
+              <a href="reports.html" class="w-full rounded-xl border border-emerald-200 bg-emerald-50 py-3.5 px-4 text-left text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 flex items-center gap-3 cursor-pointer">
                 <span class="text-lg">📊</span> ดูรายงานและส่งอีเมลสถานศึกษา
               </a>
             </div>
@@ -489,34 +483,77 @@
           </div>
 
           <!-- Danger Zone: Purge System Data -->
-          <div class="card p-6 border-2 border-rose-500/30 bg-gradient-to-br from-white via-rose-50/10 to-rose-50/30 col-span-1 lg:col-span-2 space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-rose-200/60">
-              <div>
-                <h3 class="font-extrabold text-rose-900 text-lg flex items-center gap-2">
-                  <span class="text-xl">🚨</span> พื้นที่อันตราย: ล้างข้อมูลระบบ (Reset System Data)
-                </h3>
-                <p class="text-xs text-rose-600 font-semibold mt-0.5">ล้างข้อมูลทดสอบ ประวัติการลงเวลา ใบลา หรือล้างข้อมูล นศท. ทั้งระบบสำหรับตั้งค่าเริ่มต้นใหม่</p>
+          <div class="card p-6 sm:p-7 border-2 border-rose-200/90 bg-gradient-to-br from-white via-rose-50/20 to-rose-100/30 col-span-1 lg:col-span-2 shadow-xl shadow-rose-900/5 relative overflow-hidden rounded-3xl space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-rose-200/80">
+              <div class="flex items-center gap-3">
+                <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-rose-500 text-white text-xl shadow-md shadow-rose-600/30 ring-4 ring-rose-100">
+                  🚨
+                </div>
+                <div>
+                  <h3 class="font-black text-rose-950 text-lg sm:text-xl tracking-tight">
+                    พื้นที่อันตราย: ล้างข้อมูลระบบ (Reset System Data)
+                  </h3>
+                  <p class="text-xs text-rose-600/90 font-bold mt-0.5">ล้างข้อมูลทดสอบ ประวัติการลงเวลา ใบลา หรือล้างข้อมูล นศท. ทั้งระบบสำหรับตั้งค่าเริ่มต้นใหม่</p>
+                </div>
               </div>
-              <span class="rounded-full bg-rose-100 border border-rose-300 px-3 py-1 text-xs font-black text-rose-700 self-start sm:self-auto">เฉพาะแอดมินเท่านั้น</span>
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-100/90 border border-rose-300/80 px-3.5 py-1 text-xs font-black text-rose-800 shrink-0 self-start sm:self-auto shadow-xs">
+                <span class="h-2 w-2 rounded-full bg-rose-600 animate-pulse"></span> เฉพาะแอดมินระบบเท่านั้น
+              </span>
             </div>
 
-            <div class="grid gap-3.5 sm:grid-cols-3">
-              <button onclick="purgeSystemData('attendance')" class="rounded-2xl border border-rose-200 bg-white p-4.5 text-left shadow-xs transition hover:bg-rose-50 hover:border-rose-300 group cursor-pointer">
-                <div class="text-2xl mb-1.5">🧹</div>
-                <h4 class="font-extrabold text-rose-900 text-sm group-hover:text-rose-700">ล้างประวัติการเช็คชื่อ & ใบลา</h4>
-                <p class="text-[0.68rem] text-slate-500 font-medium mt-1 leading-relaxed">ลบเฉพาะบันทึกเวลาเรียน ใบลา และการเช็คยอดกลางวันทั้งหมด (เก็บบัญชี นศท. ไว้)</p>
+            <div class="grid gap-4 sm:grid-cols-3 pt-2">
+              <button onclick="purgeSystemData('attendance')" class="group relative flex flex-col justify-between rounded-2xl border border-rose-200/80 bg-white/90 p-5 text-left shadow-xs transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:shadow-rose-900/5 hover:border-rose-300 hover:bg-rose-50/50 cursor-pointer">
+                <div>
+                  <div class="grid h-11 w-11 place-items-center rounded-xl bg-rose-50 text-rose-600 text-xl font-bold mb-3 border border-rose-100 group-hover:scale-110 transition-transform">
+                    🧹
+                  </div>
+                  <h4 class="font-extrabold text-rose-950 text-sm sm:text-base group-hover:text-rose-700 transition-colors">
+                    ล้างประวัติเช็คชื่อ & ใบลา
+                  </h4>
+                  <p class="text-[0.72rem] text-slate-500 font-medium mt-1.5 leading-relaxed">
+                    ลบเฉพาะบันทึกเวลาเรียน ใบลา และการเช็คยอดกลางวันทั้งหมด (ยังเก็บบัญชี นศท. ไว้)
+                  </p>
+                </div>
+                <div class="mt-4 flex items-center gap-1.5 text-xs font-bold text-rose-600 group-hover:translate-x-1 transition-transform">
+                  <span>ดำเนินการล้างข้อมูล</span>
+                  <span>→</span>
+                </div>
               </button>
 
-              <button onclick="purgeSystemData('students')" class="rounded-2xl border border-rose-200 bg-white p-4.5 text-left shadow-xs transition hover:bg-rose-50 hover:border-rose-300 group cursor-pointer">
-                <div class="text-2xl mb-1.5">🗑️</div>
-                <h4 class="font-extrabold text-rose-900 text-sm group-hover:text-rose-700">ล้างบัญชี นศท. ทั้งหมด</h4>
-                <p class="text-[0.68rem] text-slate-500 font-medium mt-1 leading-relaxed">ลบบัญชีนักเรียนทั้งหมด รวมทั้งข้อมูล Face ID (เก็บเฉพาะบัญชีแอดมิน/ครูฝึก)</p>
+              <button onclick="purgeSystemData('students')" class="group relative flex flex-col justify-between rounded-2xl border border-rose-200/80 bg-white/90 p-5 text-left shadow-xs transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:shadow-rose-900/5 hover:border-rose-300 hover:bg-rose-50/50 cursor-pointer">
+                <div>
+                  <div class="grid h-11 w-11 place-items-center rounded-xl bg-rose-50 text-rose-600 text-xl font-bold mb-3 border border-rose-100 group-hover:scale-110 transition-transform">
+                    🗑️
+                  </div>
+                  <h4 class="font-extrabold text-rose-950 text-sm sm:text-base group-hover:text-rose-700 transition-colors">
+                    ล้างบัญชี นศท. ทั้งหมด
+                  </h4>
+                  <p class="text-[0.72rem] text-slate-500 font-medium mt-1.5 leading-relaxed">
+                    ลบบัญชีนักเรียนทั้งหมด รวมทั้งข้อมูล Face ID (เก็บเฉพาะบัญชีแอดมิน/ครูฝึก)
+                  </p>
+                </div>
+                <div class="mt-4 flex items-center gap-1.5 text-xs font-bold text-rose-600 group-hover:translate-x-1 transition-transform">
+                  <span>ดำเนินการล้างข้อมูล</span>
+                  <span>→</span>
+                </div>
               </button>
 
-              <button onclick="purgeSystemData('all')" class="rounded-2xl border border-rose-500 bg-rose-600 p-4.5 text-left shadow-md transition hover:bg-rose-700 text-white group cursor-pointer">
-                <div class="text-2xl mb-1.5">🔥</div>
-                <h4 class="font-black text-white text-sm">ล้างข้อมูลทั้งเว็บ (Factory Reset)</h4>
-                <p class="text-[0.68rem] text-rose-100 font-medium mt-1 leading-relaxed">ลบข้อมูล นศท., การเช็คชื่อ, ใบลา, และสถานศึกษา ทั้งหมดในเว็บเพื่อเริ่มต้นใหม่</p>
+              <button onclick="purgeSystemData('all')" class="group relative flex flex-col justify-between rounded-2xl border border-rose-600 bg-gradient-to-b from-rose-600 to-rose-700 p-5 text-left shadow-md shadow-rose-600/25 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-rose-600/40 hover:from-rose-700 hover:to-rose-800 text-white cursor-pointer">
+                <div>
+                  <div class="grid h-11 w-11 place-items-center rounded-xl bg-white/20 text-white text-xl font-bold mb-3 border border-white/20 group-hover:scale-110 transition-transform">
+                    🔥
+                  </div>
+                  <h4 class="font-black text-white text-sm sm:text-base">
+                    ล้างข้อมูลทั้งเว็บ (Factory Reset)
+                  </h4>
+                  <p class="text-[0.72rem] text-rose-100/90 font-medium mt-1.5 leading-relaxed">
+                    ลบข้อมูล นศท., การเช็คชื่อ, ใบลา, และสถานศึกษา ทั้งหมดในเว็บเพื่อเริ่มต้นใหม่
+                  </p>
+                </div>
+                <div class="mt-4 flex items-center gap-1.5 text-xs font-black text-white group-hover:translate-x-1 transition-transform">
+                  <span>ล้างข้อมูลทั้งหมด</span>
+                  <span>→</span>
+                </div>
               </button>
             </div>
           </div>
@@ -1647,11 +1684,9 @@ async function loadSysStats() {
 async function loadGASUrlSetting() {
   var statusEl = document.getElementById('gas-url-status');
   var inputEl  = document.getElementById('gas-url-input');
-  var approverEmailEl = document.getElementById('gas-approver-email-input');
   if (!inputEl) return;
 
   var currentUrl = localStorage.getItem('gas_web_app_url') || '';
-  var approverEmail = localStorage.getItem('gas_approver_email') || '';
 
   try {
     var snap = await db.collection(COLLECTIONS.SETTINGS).doc('gas').get();
@@ -1661,18 +1696,13 @@ async function loadGASUrlSetting() {
         currentUrl = d.url;
         localStorage.setItem('gas_web_app_url', currentUrl);
       }
-      if (d.approverEmail || d.adminEmail) {
-        approverEmail = d.approverEmail || d.adminEmail;
-        localStorage.setItem('gas_approver_email', approverEmail);
-      }
     }
   } catch(e) {}
 
   inputEl.value = currentUrl;
-  if (approverEmailEl) approverEmailEl.value = approverEmail;
 
   if (currentUrl) {
-    statusEl.textContent = '✅ พร้อมใช้งาน' + (approverEmail ? ' (ส่งแจ้งเตือนไปที่: ' + approverEmail + ')' : ' (ส่งหาครูฝึกผู้อนุมัติ)');
+    statusEl.textContent = '✅ ระบบเชื่อมต่อ Google Apps Script Web App เรียบร้อยพร้อมใช้งาน';
     statusEl.className   = 'text-xs text-emerald-600 font-bold';
   } else {
     statusEl.textContent = '⚠️ ยังไม่ได้ระบุ Web App URL (ใช้ค่าเริ่มต้นระบบ)';
@@ -1682,9 +1712,7 @@ async function loadGASUrlSetting() {
 
 async function saveGASUrlSetting() {
   var inputEl  = document.getElementById('gas-url-input');
-  var approverEmailEl = document.getElementById('gas-approver-email-input');
   var url = (inputEl.value || '').trim();
-  var approverEmail = approverEmailEl ? (approverEmailEl.value || '').trim() : '';
 
   if (url && !url.startsWith('http')) {
     showToast('กรุณากรอก Web App URL ให้ถูกต้อง (ขึ้นต้นด้วย https://)', 'warning');
@@ -1693,17 +1721,14 @@ async function saveGASUrlSetting() {
 
   try {
     localStorage.setItem('gas_web_app_url', url);
-    if (approverEmail) localStorage.setItem('gas_approver_email', approverEmail);
 
     await db.collection(COLLECTIONS.SETTINGS).doc('gas').set({
       url: url,
-      approverEmail: approverEmail,
-      adminEmail: approverEmail,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy: currentUser ? currentUser.uid : 'admin'
     }, { merge: true });
 
-    showToast('บันทึกการตั้งค่าการส่งอีเมลเรียบร้อยแล้ว', 'success');
+    showToast('บันทึกการตั้งค่า Web App URL เรียบร้อยแล้ว', 'success');
     loadGASUrlSetting();
   } catch(e) {
     showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
