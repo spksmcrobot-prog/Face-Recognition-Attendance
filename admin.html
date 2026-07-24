@@ -2182,7 +2182,11 @@ async function deleteAttendanceRecord(uid) {
   try {
     await db.collection(COLLECTIONS.ATTENDANCE).doc(dateStr).collection('records').doc(uid).delete();
     showToast('ลบบันทึกการเช็คชื่อสำเร็จ', 'success');
-    loadAdminAttendanceRecords();
+    await Promise.all([
+      loadAdminAttendanceRecords(),
+      loadStudents(),
+      loadSysStats()
+    ]);
   } catch(e) {
     showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
   }

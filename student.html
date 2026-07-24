@@ -946,16 +946,22 @@ async function initCheckinTab() {
   }
 
   // Always load full attendance history for Tab 1
-  loadHistoryTab();
+  loadHistoryTab(true);
+
+  var doneCard = document.getElementById('checkin-done');
+  var mainArea = document.getElementById('checkin-main');
 
   // All done
-  if (!_canCheckin && !_canCheckout && _todayAttendance) {
+  if (!_canCheckin && !_canCheckout && _todayAttendance && _todayAttendance.checkInTime) {
     document.getElementById('checkin-loader').style.display = 'none';
-    document.getElementById('checkin-done').style.display = 'block';
+    if (doneCard) doneCard.style.display = 'block';
+    if (mainArea) mainArea.style.display = 'none';
     document.getElementById('done-in-time').textContent = formatTime(_todayAttendance.checkInTime);
     document.getElementById('done-out-time').textContent = _todayAttendance.checkOutTime ? formatTime(_todayAttendance.checkOutTime) : '--';
     renderTodayHistory(_todayAttendance);
     return;
+  } else {
+    if (doneCard) doneCard.style.display = 'none';
   }
 
   // No face registered
@@ -1606,7 +1612,6 @@ async function renderMiddayHistory(rounds) {
 var _historyLoaded = false;
 
 async function loadHistoryTab(force = false) {
-  if (_historyLoaded && !force) return;
   var loader = document.getElementById('history-loader');
   var main   = document.getElementById('history-main');
   if (loader) loader.style.display = 'flex';
