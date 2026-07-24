@@ -257,15 +257,24 @@ auth.onAuthStateChanged(async user => {
 });
 
 async function loadStats() {
-  var [pending, approved, rejected] = await Promise.all([
-    db.collection(COLLECTIONS.LEAVE).where('status','==','pending').get(),
-    db.collection(COLLECTIONS.LEAVE).where('status','==','approved').get(),
-    db.collection(COLLECTIONS.LEAVE).where('status','==','rejected').get(),
-  ]);
-  document.getElementById('cnt-pending').textContent  = pending.size;
-  document.getElementById('cnt-approved').textContent = approved.size;
-  document.getElementById('cnt-rejected').textContent = rejected.size;
-  document.getElementById('cnt-total').textContent    = pending.size + approved.size + rejected.size;
+  try {
+    var [pending, approved, rejected] = await Promise.all([
+      db.collection(COLLECTIONS.LEAVE).where('status','==','pending').get(),
+      db.collection(COLLECTIONS.LEAVE).where('status','==','approved').get(),
+      db.collection(COLLECTIONS.LEAVE).where('status','==','rejected').get(),
+    ]);
+    var elP = document.getElementById('cnt-pending');
+    var elA = document.getElementById('cnt-approved');
+    var elR = document.getElementById('cnt-rejected');
+    var elT = document.getElementById('cnt-total');
+
+    if (elP) elP.textContent = pending.size;
+    if (elA) elA.textContent = approved.size;
+    if (elR) elR.textContent = rejected.size;
+    if (elT) elT.textContent = pending.size + approved.size + rejected.size;
+  } catch(e) {
+    console.warn('Failed to load leave stats:', e);
+  }
 }
 
 function leaveBadge(status) {

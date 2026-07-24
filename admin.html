@@ -157,7 +157,9 @@
               <label class="mb-1.5 flex items-center gap-1 text-[0.7rem] font-extrabold text-forest-800 uppercase tracking-wide">
                 <span>🏫</span> โรงเรียน
               </label>
-              <input id="filter-s-school" placeholder="กรอกชื่อโรงเรียน..." oninput="filterStudents()" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition">
+              <select id="filter-s-school" onchange="filterStudents()" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-forest-900 focus:border-emerald-500 outline-none transition">
+                <option value="">ทุกสถานศึกษา</option>
+              </select>
             </div>
           </div>
         </div>
@@ -485,6 +487,39 @@
               </div>
             </div>
           </div>
+
+          <!-- Danger Zone: Purge System Data -->
+          <div class="card p-6 border-2 border-rose-500/30 bg-gradient-to-br from-white via-rose-50/10 to-rose-50/30 col-span-1 lg:col-span-2 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-rose-200/60">
+              <div>
+                <h3 class="font-extrabold text-rose-900 text-lg flex items-center gap-2">
+                  <span class="text-xl">🚨</span> พื้นที่อันตราย: ล้างข้อมูลระบบ (Reset System Data)
+                </h3>
+                <p class="text-xs text-rose-600 font-semibold mt-0.5">ล้างข้อมูลทดสอบ ประวัติการลงเวลา ใบลา หรือล้างข้อมูล นศท. ทั้งระบบสำหรับตั้งค่าเริ่มต้นใหม่</p>
+              </div>
+              <span class="rounded-full bg-rose-100 border border-rose-300 px-3 py-1 text-xs font-black text-rose-700 self-start sm:self-auto">เฉพาะแอดมินเท่านั้น</span>
+            </div>
+
+            <div class="grid gap-3.5 sm:grid-cols-3">
+              <button onclick="purgeSystemData('attendance')" class="rounded-2xl border border-rose-200 bg-white p-4.5 text-left shadow-xs transition hover:bg-rose-50 hover:border-rose-300 group cursor-pointer">
+                <div class="text-2xl mb-1.5">🧹</div>
+                <h4 class="font-extrabold text-rose-900 text-sm group-hover:text-rose-700">ล้างประวัติการเช็คชื่อ & ใบลา</h4>
+                <p class="text-[0.68rem] text-slate-500 font-medium mt-1 leading-relaxed">ลบเฉพาะบันทึกเวลาเรียน ใบลา และการเช็คยอดกลางวันทั้งหมด (เก็บบัญชี นศท. ไว้)</p>
+              </button>
+
+              <button onclick="purgeSystemData('students')" class="rounded-2xl border border-rose-200 bg-white p-4.5 text-left shadow-xs transition hover:bg-rose-50 hover:border-rose-300 group cursor-pointer">
+                <div class="text-2xl mb-1.5">🗑️</div>
+                <h4 class="font-extrabold text-rose-900 text-sm group-hover:text-rose-700">ล้างบัญชี นศท. ทั้งหมด</h4>
+                <p class="text-[0.68rem] text-slate-500 font-medium mt-1 leading-relaxed">ลบบัญชีนักเรียนทั้งหมด รวมทั้งข้อมูล Face ID (เก็บเฉพาะบัญชีแอดมิน/ครูฝึก)</p>
+              </button>
+
+              <button onclick="purgeSystemData('all')" class="rounded-2xl border border-rose-500 bg-rose-600 p-4.5 text-left shadow-md transition hover:bg-rose-700 text-white group cursor-pointer">
+                <div class="text-2xl mb-1.5">🔥</div>
+                <h4 class="font-black text-white text-sm">ล้างข้อมูลทั้งเว็บ (Factory Reset)</h4>
+                <p class="text-[0.68rem] text-rose-100 font-medium mt-1 leading-relaxed">ลบข้อมูล นศท., การเช็คชื่อ, ใบลา, และสถานศึกษา ทั้งหมดในเว็บเพื่อเริ่มต้นใหม่</p>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -556,7 +591,9 @@
           </div>
           <div>
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">สถานศึกษา <span class="text-rose-500">*</span></label>
-            <input id="s-school" placeholder="ชื่อโรงเรียน" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+            <select id="s-school" onchange="onSchoolSelectChange(this)" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+              <option value="">-- เลือกสถานศึกษา --</option>
+            </select>
           </div>
           <div>
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">รหัสสถานศึกษา</label>
@@ -645,9 +682,12 @@
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">อีเมลรับแจ้งเตือนใบลา (สำหรับ Role 5 ครูฝึก / แอดมิน)</label>
             <input id="st-email" type="email" placeholder="กรอกเฉพาะ Role 5 หัวหน้าชุดครูฝึก หรือแอดมิน เพื่อรับอีเมลแจ้งเตือนเมื่อ นศท. ขอลา" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
           </div>
-          <div class="sm:col-span-2" id="st-birth-wrap">
-            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">รหัสผ่านเริ่มต้น (วันเกิด) <span class="text-rose-500">*</span></label>
-            <input id="st-birth" placeholder="เช่น 15/01/2005 หรือ 123456" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          <div class="sm:col-span-2" id="st-pass-wrap">
+            <label class="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-700 uppercase tracking-wide">
+              <span>🔑 รหัสผ่านเข้าสู่ระบบ (Password)</span>
+              <span class="text-[0.68rem] text-slate-400 font-normal" id="st-pass-hint">กำหนดรหัสผ่านเข้าสู่ระบบ</span>
+            </label>
+            <input id="st-birth" type="text" placeholder="กรอกรหัสผ่านสำหรับ Login (เช่น วันเกิด 15/01/2005 หรือ 123456)" class="w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition shadow-xs">
           </div>
           
           <!-- Conditional Fields for Platoon / Company Leader -->
@@ -920,9 +960,10 @@ auth.onAuthStateChanged(async user => {
 
 function setupRoleTabVisibility(role) {
   const showTabs = {
+    2: ['students'],
     3: ['students'],
     4: ['students', 'attendance'],
-    5: ['students', 'staff', 'attendance'],
+    5: ['students', 'attendance'],
     6: ['students', 'staff', 'attendance', 'rules', 'geofence', 'system']
   };
   const allowed = showTabs[role] || ['students'];
@@ -936,6 +977,11 @@ function setupRoleTabVisibility(role) {
 }
 
 function switchAdminTab(tabId, btn) {
+  if (tabId === 'staff' && currentUser && currentUser.role < ROLES.ADMIN) {
+    showToast('สิทธิ์ของคุณไม่สามารถจัดการบัญชีเจ้าหน้าที่ได้ (เฉพาะแอดมินระบบ)', 'warning');
+    return;
+  }
+
   ['students','staff','attendance','rules','geofence','system'].forEach(t => {
     var el = document.getElementById('tab-'+t);
     if (el) el.classList.add('hidden');
@@ -968,6 +1014,9 @@ async function loadStudents() {
       todayAttSnap.docs.forEach(d => { attMap[d.id] = d.data(); });
       allStudents.forEach(s => { s.todayAtt = attMap[s.id] || null; });
     } catch(e) {}
+
+    // Load registered schools into dropdowns
+    loadAdminSchoolDropdowns();
 
     // Restrict student creation/import for Role 4 and lower
     var addStudentBtn = document.getElementById('btn-add-student');
@@ -1135,6 +1184,57 @@ function closeModal(id) {
   document.body.style.overflow = '';
 }
 
+var _cachedRegisteredSchools = [];
+
+async function loadAdminSchoolDropdowns() {
+  try {
+    var snap = await db.collection(COLLECTIONS.SCHOOLS).orderBy('name').get();
+    _cachedRegisteredSchools = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    var sSchoolSelect = document.getElementById('s-school');
+    if (sSchoolSelect) {
+      var currentSchoolVal = sSchoolSelect.value;
+      sSchoolSelect.innerHTML = `<option value="">-- เลือกสถานศึกษา --</option>` +
+        _cachedRegisteredSchools.map(s => `<option value="${escapeHtml(s.name)}" data-code="${escapeHtml(s.code||'')}">${escapeHtml(s.name)}${s.code ? ' ('+escapeHtml(s.code)+')' : ''}</option>`).join('') +
+        `<option value="__CUSTOM__">➕ ระบุสถานศึกษาใหม่...</option>`;
+      if (currentSchoolVal) sSchoolSelect.value = currentSchoolVal;
+    }
+
+    var filterSchoolSelect = document.getElementById('filter-s-school');
+    if (filterSchoolSelect) {
+      var currentFilterVal = filterSchoolSelect.value;
+      filterSchoolSelect.innerHTML = `<option value="">ทุกสถานศึกษา</option>` +
+        _cachedRegisteredSchools.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`).join('');
+      if (currentFilterVal) filterSchoolSelect.value = currentFilterVal;
+    }
+  } catch(e) {
+    console.warn('Failed to load registered schools dropdown:', e);
+  }
+}
+
+async function onSchoolSelectChange(selectEl) {
+  if (selectEl.value === '__CUSTOM__') {
+    const newSchoolName = prompt('กรุณากรอกชื่อสถานศึกษาใหม่:');
+    if (newSchoolName && newSchoolName.trim()) {
+      const trimmedName = newSchoolName.trim();
+      let opt = document.createElement('option');
+      opt.value = trimmedName;
+      opt.textContent = trimmedName;
+      opt.selected = true;
+      selectEl.insertBefore(opt, selectEl.lastElementChild);
+      document.getElementById('s-schoolCode').value = '';
+    } else {
+      selectEl.value = '';
+    }
+    return;
+  }
+
+  const selectedOpt = selectEl.options[selectEl.selectedIndex];
+  if (selectedOpt && selectedOpt.dataset && selectedOpt.dataset.code) {
+    document.getElementById('s-schoolCode').value = selectedOpt.dataset.code;
+  }
+}
+
 function openAddStudentModal() {
   document.getElementById('edit-student-uid').value = '';
   document.getElementById('student-modal-title').textContent = 'เพิ่ม นศท. ใหม่';
@@ -1144,6 +1244,7 @@ function openAddStudentModal() {
       if (el) el.value = '';
     });
   document.getElementById('s-studentId').disabled = false;
+  loadAdminSchoolDropdowns();
   openModal('add-student-modal');
 }
 
@@ -1159,7 +1260,22 @@ function openEditStudent(uid) {
   document.getElementById('s-nationalId').value   = s.nationalId || '';
   document.getElementById('s-company').value      = s.company || '1';
   document.getElementById('s-platoon').value      = s.platoon || '';
-  document.getElementById('s-school').value       = s.school || '';
+
+  loadAdminSchoolDropdowns().then(() => {
+    const sSelect = document.getElementById('s-school');
+    if (sSelect) {
+      sSelect.value = s.school || '';
+      if (s.school && !sSelect.value) {
+        let opt = document.createElement('option');
+        opt.value = s.school;
+        opt.textContent = s.school;
+        opt.selected = true;
+        sSelect.insertBefore(opt, sSelect.lastElementChild);
+        sSelect.value = s.school;
+      }
+    }
+  });
+
   document.getElementById('s-schoolCode').value   = s.schoolCode || '';
   document.getElementById('s-center').value       = s.center || '';
   document.getElementById('s-email').value        = s.contactEmail || s.email || '';
@@ -1350,7 +1466,9 @@ function openAddStaffModal() {
   document.getElementById('st-name').value = '';
   document.getElementById('st-email').value = '';
   document.getElementById('st-birth').value = '';
-  document.getElementById('st-birth-wrap').style.display = 'block';
+  var passHint = document.getElementById('st-pass-hint');
+  if (passHint) passHint.textContent = 'กำหนดรหัสผ่านเข้าสู่ระบบ';
+  document.getElementById('st-birth').placeholder = 'กรอกรหัสผ่านสำหรับ Login (เช่น วันเกิด 15/01/2005 หรือ 123456)';
   document.getElementById('st-company').value = '1';
   document.getElementById('st-platoon').value = '';
   document.getElementById('st-track').value = 'regular';
@@ -1367,13 +1485,15 @@ async function openEditStaffModal(uid) {
     var s = snap.data();
 
     document.getElementById('st-uid').value = uid;
-    document.getElementById('st-modal-title').textContent = 'แก้ไขข้อมูลเจ้าหน้าที่';
+    document.getElementById('st-modal-title').textContent = 'แก้ไขข้อมูลและรหัสผ่านเจ้าหน้าที่';
     document.getElementById('st-id').value = s.studentId || '';
     document.getElementById('st-id').disabled = true;
     document.getElementById('st-name').value = s.name || '';
     document.getElementById('st-email').value = s.contactEmail || (s.email && !s.email.endsWith('@nstda.system') ? s.email : '');
     document.getElementById('st-birth').value = '';
-    document.getElementById('st-birth-wrap').style.display = 'none';
+    var passHint = document.getElementById('st-pass-hint');
+    if (passHint) passHint.textContent = 'เว้นว่างไว้เพื่อใช้รหัสเดิม';
+    document.getElementById('st-birth').placeholder = 'กรอกรหัสผ่านใหม่ (หากต้องการเปลี่ยนรหัสผ่าน) หรือเว้นว่างไว้';
     document.getElementById('st-role').value = s.role || '5';
     document.getElementById('st-company').value = s.company || '1';
     document.getElementById('st-platoon').value = s.platoon || '';
@@ -1397,6 +1517,7 @@ async function saveStaff() {
     var role = parseInt(document.getElementById('st-role').value);
     var company = document.getElementById('st-company').value.trim();
     var platoon = document.getElementById('st-platoon').value.trim();
+    var passwordVal = document.getElementById('st-birth').value.trim();
     
     // Auto-derive track based on platoon assignment or role 3 selection
     var track = 'all';
@@ -1407,7 +1528,7 @@ async function saveStaff() {
     }
 
     if (stUid) {
-      await db.collection(COLLECTIONS.USERS).doc(stUid).update({
+      var updateData = {
         name: name,
         contactEmail: email,
         email: email || `${document.getElementById('st-id').value}@nstda.system`,
@@ -1416,14 +1537,23 @@ async function saveStaff() {
         platoon: platoon,
         track: track,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      showToast('แก้ไขข้อมูลเจ้าหน้าที่เรียบร้อยแล้ว', 'success');
+      };
+      if (passwordVal) {
+        updateData.birthdate = passwordVal;
+      }
+      await db.collection(COLLECTIONS.USERS).doc(stUid).update(updateData);
+      showToast('แก้ไขข้อมูลและรหัสผ่านเจ้าหน้าที่เรียบร้อยแล้ว', 'success');
     } else {
+      if (!passwordVal) {
+        showToast('กรุณากำหนดรหัสผ่านเข้าสู่ระบบสำหรับเจ้าหน้าที่ใหม่', 'warning');
+        hideLoading(btn);
+        return;
+      }
       await adminCreateUser({
         studentId: document.getElementById('st-id').value.trim(),
         name: name,
         contactEmail: email,
-        birthdate: document.getElementById('st-birth').value,
+        birthdate: passwordVal,
         role: role,
         company: company,
         platoon: platoon,
@@ -1497,11 +1627,20 @@ async function useMyLocation() {
 
 // ─── System Stats ─────────────────────────────────────────────
 async function loadSysStats() {
-  var stats = await getSystemStats();
-  document.getElementById('sys-students').textContent = stats.students;
-  document.getElementById('sys-staff').textContent    = stats.staff;
-  document.getElementById('sys-today').textContent    = stats.todayAtt;
-  document.getElementById('sys-schools').textContent  = stats.schools;
+  try {
+    var stats = await getSystemStats();
+    var elSt = document.getElementById('sys-students');
+    var elSf = document.getElementById('sys-staff');
+    var elTd = document.getElementById('sys-today');
+    var elSc = document.getElementById('sys-schools');
+
+    if (elSt) elSt.textContent = stats.students;
+    if (elSf) elSf.textContent = stats.staff;
+    if (elTd) elTd.textContent = stats.todayAtt;
+    if (elSc) elSc.textContent = stats.schools;
+  } catch(e) {
+    console.warn('Failed to load system stats:', e);
+  }
 }
 
 // ─── GAS Web App URL Setting ───────────────────────────────
@@ -1568,6 +1707,130 @@ async function saveGASUrlSetting() {
     loadGASUrlSetting();
   } catch(e) {
     showAlertPopup('เกิดข้อผิดพลาด', e.message, 'error');
+  }
+}
+
+// ─── Danger Zone: Purge System Data (Factory Reset) ─────────────
+async function purgeSystemData(type) {
+  if (!currentUser || currentUser.role !== ROLES.ADMIN) {
+    showToast('สิทธิ์ของคุณไม่สามารถล้างข้อมูลระบบได้ (เฉพาะแอดมินระบบ)', 'warning');
+    return;
+  }
+
+  let titleText = '';
+  let detailText = '';
+  let keyword = 'RESET';
+
+  if (type === 'attendance') {
+    titleText = 'ล้างประวัติการเช็คชื่อ & ใบลาทั้งหมด?';
+    detailText = 'การดำเนินการนี้จะลบบันทึกการเช็คชื่อเข้า-ออก ใบลา และการเช็คยอดกลางวันทั้งหมดในระบบ (โดยยังเก็บบัญชี นศท. ไว้)';
+  } else if (type === 'students') {
+    titleText = 'ล้างบัญชี นศท. ทั้งหมด?';
+    detailText = 'การดำเนินการนี้จะลบบัญชีนักศึกษาวิชาทหารทั้งหมด รวมทั้งข้อมูล Face ID (โดยยังเก็บบัญชีเจ้าหน้าที่และแอดมินไว้)';
+  } else if (type === 'all') {
+    titleText = '🚨 ล้างข้อมูลทั้งระบบ (Factory Reset)?';
+    detailText = 'การดำเนินการนี้จะลบข้อมูล นศท., การเช็คชื่อ, ใบลา, และสถานศึกษา ทั้งหมดในระบบเพื่อเริ่มต้นใหม่!';
+    keyword = 'DELETE-ALL';
+  } else {
+    return;
+  }
+
+  var confirmed = await showConfirmPopup(
+    titleText,
+    detailText + '\n\n⚠️ การกระทำนี้ไม่สามารถย้อนกลับได้!',
+    'ดำเนินการต่อ',
+    'ยกเลิก',
+    'warning'
+  );
+  if (!confirmed) return;
+
+  const inputKey = prompt(`⚠️ เตือนความปลอดภัยครั้งสุดท้าย!\nกรุณาพิมพ์คำว่า "${keyword}" ตัวพิมพ์ใหญ่เพื่อยืนยันการล้างข้อมูล:`);
+  if (!inputKey || inputKey.trim() !== keyword) {
+    showToast('ยกเลิกการล้างข้อมูล (พิมพ์รหัสยืนยันไม่ถูกต้อง)', 'warning');
+    return;
+  }
+
+  const alertModal = Swal.fire({
+    title: 'กำลังล้างข้อมูลระบบ...',
+    html: 'กรุณารอสักครู่ ระบบกำลังลบข้อมูลที่เลือกจากฐานข้อมูล',
+    allowOutsideClick: false,
+    didOpen: () => { Swal.showLoading(); }
+  });
+
+  try {
+    if (type === 'attendance' || type === 'all') {
+      // 1. Delete all Attendance records
+      const attDatesSnap = await db.collection(COLLECTIONS.ATTENDANCE).get();
+      for (const dateDoc of attDatesSnap.docs) {
+        const recSnap = await dateDoc.ref.collection('records').get();
+        let batch = db.batch();
+        let c = 0;
+        for (const rDoc of recSnap.docs) {
+          batch.delete(rDoc.ref);
+          c++;
+          if (c % 400 === 0) { await batch.commit(); batch = db.batch(); }
+        }
+        if (c % 400 !== 0) await batch.commit();
+        await dateDoc.ref.delete();
+      }
+
+      // 2. Delete all Leave Requests
+      const leaveSnap = await db.collection(COLLECTIONS.LEAVE).get();
+      let lBatch = db.batch();
+      let lCount = 0;
+      for (const lDoc of leaveSnap.docs) {
+        lBatch.delete(lDoc.ref);
+        lCount++;
+        if (lCount % 400 === 0) { await lBatch.commit(); lBatch = db.batch(); }
+      }
+      if (lCount % 400 !== 0) await lBatch.commit();
+
+      // 3. Delete Midday Checks
+      try {
+        const midSnap = await db.collection('midday_checks').get();
+        for (const mDoc of midSnap.docs) {
+          const roundsSnap = await mDoc.ref.collection('rounds').get();
+          for (const rDoc of roundsSnap.docs) {
+            const recSnap = await rDoc.ref.collection('records').get();
+            let b = db.batch();
+            recSnap.docs.forEach(d => b.delete(d.ref));
+            await b.commit();
+            await rDoc.ref.delete();
+          }
+          await mDoc.ref.delete();
+        }
+      } catch(e) {}
+    }
+
+    if (type === 'students' || type === 'all') {
+      // Delete all student user accounts
+      const studentSnap = await db.collection(COLLECTIONS.USERS).where('role', '==', ROLES.STUDENT).get();
+      let sBatch = db.batch();
+      let sCount = 0;
+      for (const sDoc of studentSnap.docs) {
+        sBatch.delete(sDoc.ref);
+        sCount++;
+        if (sCount % 400 === 0) { await sBatch.commit(); sBatch = db.batch(); }
+      }
+      if (sCount % 400 !== 0) await sBatch.commit();
+    }
+
+    if (type === 'all') {
+      // Delete schools if full reset
+      const schoolSnap = await db.collection(COLLECTIONS.SCHOOLS).get();
+      let scBatch = db.batch();
+      for (const scDoc of schoolSnap.docs) {
+        scBatch.delete(scDoc.ref);
+      }
+      await scBatch.commit();
+    }
+
+    Swal.close();
+    await showAlertPopup('ล้างข้อมูลสำเร็จ', 'ระบบได้ทำการลบข้อมูลตามที่เลือกเรียบร้อยแล้ว', 'success');
+    location.reload();
+  } catch(err) {
+    Swal.close();
+    showAlertPopup('เกิดข้อผิดพลาดในการล้างข้อมูล', err.message, 'error');
   }
 }
 

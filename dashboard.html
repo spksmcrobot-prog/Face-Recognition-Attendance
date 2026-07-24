@@ -453,7 +453,7 @@
         document.getElementById('dash-title').textContent = 'ศูนย์ควบคุมกำลังพล';
         document.getElementById('dash-subtitle').textContent = 'ภาพรวมการเข้าฝึกของ ' + roleName + ' · ศูนย์ฝึกย่อยโรงเรียนสมเด็จพิทยาคม';
         document.getElementById('commander-content').classList.remove('hidden');
-        loadCommanderData(user, dateStr);
+        loadCommanderData(user, dateToStr());
       }
     }
 
@@ -588,45 +588,45 @@
           }
         });
 
-        let allStudentsInScope = [];
         const filterWrap = document.getElementById('platoon-type-filter-wrap');
+
+        // Fetch ALL registered students of role STUDENT from Firestore
+        const sSnap = await db.collection(COLLECTIONS.USERS).where('role', '==', ROLES.STUDENT).get();
+        let allStudentsInScope = sSnap.docs.map(d => ({ uid: d.id, id: d.id, ...d.data() }));
 
         if (user.role === ROLES.PLATOON) {
           if (filterWrap) filterWrap.classList.add('hidden');
-
-          let sQuery = db.collection(COLLECTIONS.USERS).where('role', '==', ROLES.STUDENT);
-          if (user.company) sQuery = sQuery.where('company', '==', user.company);
-          if (user.platoon) sQuery = sQuery.where('platoon', '==', String(user.platoon).trim());
-          const sSnap = await sQuery.get();
-          allStudentsInScope = sSnap.docs
-            .map(d => ({ uid: d.id, ...d.data() }))
-            .filter(s => String(s.platoon || '').trim() === String(user.platoon || '').trim());
-
-          if (user.track === 'regular') {
+          if (user.company) {
+            allStudentsInScope = allStudentsInScope.filter(s => String(s.company) === String(user.company));
+          }
+          if (user.platoon) {
+            allStudentsInScope = allStudentsInScope.filter(s => String(s.platoon || '').trim() === String(user.platoon || '').trim());
+          }
+          const userTrack = user.track || (String(user.platoon || '').includes('พิเศษ') ? 'special' : 'regular');
+          if (userTrack === 'regular') {
             allStudentsInScope = allStudentsInScope.filter(s => !String(s.platoon || '').includes('พิเศษ'));
-          } else if (user.track === 'special') {
+          } else if (userTrack === 'special') {
             allStudentsInScope = allStudentsInScope.filter(s => String(s.platoon || '').includes('พิเศษ'));
           }
         } else if (user.role === ROLES.COMPANY) {
-          // Company Commander: Can check all platoons in their year (company) separated by gender track (male vs female)
-          let sQuery = db.collection(COLLECTIONS.USERS).where('role', '==', ROLES.STUDENT);
-          if (user.company) sQuery = sQuery.where('company', '==', user.company);
-          const sSnap = await sQuery.get();
-          let fetchedStudents = sSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
-
-          if (user.track === 'regular') {
+          if (user.company) {
+            allStudentsInScope = allStudentsInScope.filter(s => String(s.company) === String(user.company));
+          }
+          const userTrack = user.track || 'all';
+          if (userTrack === 'regular') {
             currentPlatoonTypeFilter = 'regular';
             if (filterWrap) filterWrap.classList.add('hidden');
-            fetchedStudents = fetchedStudents.filter(s => !String(s.platoon || '').includes('พิเศษ'));
-          } else if (user.track === 'special') {
+            allStudentsInScope = allStudentsInScope.filter(s => !String(s.platoon || '').includes('พิเศษ'));
+          } else if (userTrack === 'special') {
             currentPlatoonTypeFilter = 'special';
             if (filterWrap) filterWrap.classList.add('hidden');
-            fetchedStudents = fetchedStudents.filter(s => String(s.platoon || '').includes('พิเศษ'));
+            allStudentsInScope = allStudentsInScope.filter(s => String(s.platoon || '').includes('พิเศษ'));
           } else {
             if (filterWrap) filterWrap.classList.remove('hidden');
           }
-          allStudentsInScope = fetchedStudents;
         } else {
+          // Role 4 (Battalion), Role 5 (Chief Instructor), Role 6 (Admin):
+          // Includes all registered students in the center
           if (filterWrap) filterWrap.classList.remove('hidden');
         }
 

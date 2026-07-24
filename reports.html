@@ -90,10 +90,10 @@
             <!-- Quick Date Presets -->
             <div class="flex items-center gap-1.5 flex-wrap">
               <span class="text-[0.68rem] font-bold text-slate-400 uppercase tracking-wider mr-1">เลือกด่วน:</span>
-              <button type="button" class="preset-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-xs" onclick="setDatePreset('7days', this)">7 วันล่าสุด</button>
+              <button type="button" class="preset-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-xs" onclick="setDatePreset('today', this)">วันนี้</button>
+              <button type="button" class="preset-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="setDatePreset('7days', this)">7 วันล่าสุด</button>
               <button type="button" class="preset-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="setDatePreset('month', this)">เดือนนี้</button>
               <button type="button" class="preset-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="setDatePreset('30days', this)">30 วันล่าสุด</button>
-              <button type="button" class="preset-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700" onclick="setDatePreset('today', this)">วันนี้</button>
             </div>
           </div>
 
@@ -320,9 +320,9 @@ var currentUser = null;
 var reportData   = [];
 var activeTab    = 'attendance';
 
-// Set default date range (last 7 days)
+// Set default date range to TODAY (วันที่ปัจจุบัน)
 var endD   = today();
-var startD = dateToStr(new Date(Date.now() - 6*86400000));
+var startD = today();
 document.getElementById('filter-start').value = startD;
 document.getElementById('filter-end').value   = endD;
 
@@ -689,7 +689,7 @@ async function sendSchoolReport(schoolId) {
   if (!school) return;
   showToast(`กำลังส่งรายงานไปยัง ${school.teacherEmail}...`);
   var records = await getSchoolRecordsForDate(today(), school.name);
-  if (!records.length) { showToast('ไม่มีข้อมูลสำหรับโรงเรียนนี้วันนี้', 'error'); return; }
+  if (!records.length) { showToast('ไม่มีข้อมูลการเช็คชื่อสำหรับโรงเรียนนี้ในวันนี้', 'warning'); return; }
   var summaryData = {
     students: records.map(r => ({ studentId: r.studentId, name: r.name, status: statusTextTh(r.status) })),
     stats: computeStats(records),
@@ -706,17 +706,27 @@ async function sendTodayReport() {
 
 // ─── Leave Stats Tab ──────────────────────────────────────────
 async function loadLeaveStats() {
-  var [pending, approved, rejected, all] = await Promise.all([
-    db.collection(COLLECTIONS.LEAVE).where('status','==','pending').get(),
-    db.collection(COLLECTIONS.LEAVE).where('status','==','approved').get(),
-    db.collection(COLLECTIONS.LEAVE).where('status','==','rejected').get(),
-    db.collection(COLLECTIONS.LEAVE).limit(50).get(),
-  ]);
+  try {
+    var [pending, approved, rejected, all] = await Promise.all([
+      db.collection(COLLECTIONS.LEAVE).where('status','==','pending').get(),
+      db.collection(COLLECTIONS.LEAVE).where('status','==','approved').get(),
+      db.collection(COLLECTIONS.LEAVE).where('status','==','rejected').get(),
+      db.collection(COLLECTIONS.LEAVE).limit(50).get(),
+    ]);
 
-  document.getElementById('ls-pending').textContent  = pending.size;
-  document.getElementById('ls-approved').textContent = approved.size;
-  document.getElementById('ls-rejected').textContent = rejected.size;
-  document.getElementById('ls-total').textContent    = pending.size + approved.size + rejected.size;
+    var elP = document.getElementById('ls-pending');
+    var elA = document.getElementById('ls-approved');
+    var elR = document.getElementById('ls-rejected');
+    var elT = document.getElementById('ls-total');
+
+    if (elP) elP.textContent = pending.size;
+    if (elA) elA.textContent = approved.size;
+    if (elR) elR.textContent = rejected.size;
+    if (elT) elT.textContent = pending.size + approved.size + rejected.size;
+  } catch(e) {
+    console.warn('Failed to load leave stats in reports:', e);
+    return;
+  }
 
   var leaves = [];
   all.forEach(d => leaves.push({ id: d.id, ...d.data() }));
