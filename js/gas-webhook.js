@@ -2,8 +2,8 @@
 // gas-webhook.js — Google Apps Script Email Automation
 // ============================================================
 
-// ⚠️ แทนที่ด้วย GAS Web App URL ของคุณ (Deploy as Web App)
-const GAS_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
+// ⚠️ GAS Web App URL สำหรับระบบแจ้งเตือนทางอีเมล
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw4quSoeMEjWnwapSvhxZKnFR-G0Rr0KISa9HuMTZPVy2ClUjQiP0D7e0w7GwxKr7Qb8w/exec';
 
 // ─── Send Leave Notification to Instructor ──────────────────
 async function notifyLeaveRequest(leaveData, instructorEmails) {

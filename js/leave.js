@@ -140,7 +140,7 @@ async function getLeaveRequest(leaveId) {
   return snap.exists ? { id: snap.id, ...snap.data() } : null;
 }
 
-// ─── Get Instructor Emails (Role 5 & Role 6) ──────────────────
+// ─── Get Instructor Emails (Role 5 & Role 6 or any staff with contactEmail) ───
 async function getInstructorEmails() {
   const emails = new Set();
   try {
@@ -156,6 +156,22 @@ async function getInstructorEmails() {
     });
   } catch(e) {
     console.warn('Error fetching instructor emails:', e);
+  }
+
+  // Fallback: search all staff (role >= 2) with valid contact email if no role 5+ email found
+  if (emails.size === 0) {
+    try {
+      const staffSnap = await db.collection(COLLECTIONS.USERS)
+                               .where('role','>=', ROLES.PLATOON)
+                               .get();
+      staffSnap.docs.forEach(d => {
+        const u = d.data();
+        const em = u.contactEmail || u.email;
+        if (em && em.includes('@') && !em.endsWith('@nstda.system')) {
+          emails.add(em.trim());
+        }
+      });
+    } catch(e) {}
   }
 
   try {

@@ -641,6 +641,18 @@
           <input type="hidden" id="leave-type-val" value="personal">
         </div>
 
+        <!-- Contact Info (Email & Phone for Notification) -->
+        <div style="margin-bottom:14px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">อีเมลรับแจ้งผลพิจารณา <span style="color:#ef4444;">*</span></label>
+            <input type="email" id="student-leave-email" required placeholder="example@gmail.com" style="width:100%; border-radius:12px; border:1.5px solid #e2e8f0; padding:10px 12px; font-size:0.85rem; font-weight:700; color:#0a4d2e; box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">เบอร์โทรศัพท์ติดต่อ <span style="color:#ef4444;">*</span></label>
+            <input type="tel" id="student-leave-phone" required placeholder="08x-xxx-xxxx" style="width:100%; border-radius:12px; border:1.5px solid #e2e8f0; padding:10px 12px; font-size:0.85rem; font-weight:700; color:#0a4d2e; box-sizing:border-box;">
+          </div>
+        </div>
+
         <!-- Date range -->
         <div class="leave-date-grid">
           <div>
@@ -1742,11 +1754,13 @@ async function handleLeaveFormSubmit(e) {
   var startDate = document.getElementById('leave-start-date').value;
   var endDate = document.getElementById('leave-end-date').value;
   var reason = document.getElementById('leave-reason-text').value.trim();
+  var studentEmail = (document.getElementById('student-leave-email') || {}).value || '';
+  var studentPhone = (document.getElementById('student-leave-phone') || {}).value || '';
   var fileInput = document.getElementById('leave-evidence-file');
   var file = fileInput && fileInput.files ? fileInput.files[0] : null;
 
-  if (!startDate || !endDate || !reason) {
-    showToastBar('กรุณากรอกข้อมูลการลาให้ครบถ้วน', true);
+  if (!startDate || !endDate || !reason || !studentEmail || !studentPhone) {
+    showToastBar('กรุณากรอกข้อมูลการลา อีเมล และเบอร์โทรศัพท์ให้ครบถ้วน', true);
     return;
   }
 
@@ -1754,7 +1768,14 @@ async function handleLeaveFormSubmit(e) {
   btn.innerHTML = '<span>⏳</span> กำลังส่งคำร้อง...';
 
   try {
-    var formData = { type: type, startDate: startDate, endDate: endDate, reason: reason };
+    var formData = {
+      type: type,
+      startDate: startDate,
+      endDate: endDate,
+      reason: reason,
+      studentEmail: studentEmail.trim(),
+      studentPhone: studentPhone.trim()
+    };
     await submitLeaveRequest(_currentUser.uid, _currentUser, formData, file);
 
     showToastBar('✅ ส่งคำร้องขอลาสำเร็จแล้ว', false);
@@ -1773,6 +1794,18 @@ async function handleLeaveFormSubmit(e) {
 
 async function loadLeaveTab() {
   var el = document.getElementById('my-leave-history-list');
+  if (_currentUser) {
+    var emailInput = document.getElementById('student-leave-email');
+    var phoneInput = document.getElementById('student-leave-phone');
+    if (emailInput && !emailInput.value) {
+      var contactEmail = _currentUser.contactEmail || (_currentUser.email && !_currentUser.email.endsWith('@nstda.system') ? _currentUser.email : '');
+      emailInput.value = contactEmail || '';
+    }
+    if (phoneInput && !phoneInput.value) {
+      phoneInput.value = _currentUser.phone || _currentUser.contactPhone || '';
+    }
+  }
+
   if (!el) return;
   el.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8; font-size:0.85rem;">กำลังโหลด...</div>';
   try {

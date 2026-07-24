@@ -628,9 +628,9 @@
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">ชื่อ-นามสกุล <span class="text-rose-500">*</span></label>
             <input id="st-name" placeholder="ชื่อ-นามสกุล" required class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
           </div>
-          <div class="sm:col-span-2">
-            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">อีเมลรับแจ้งเตือนใบลา (Email)</label>
-            <input id="st-email" type="email" placeholder="เช่น teacher@gmail.com" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
+          <div class="sm:col-span-2" id="st-email-wrap">
+            <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">อีเมลรับแจ้งเตือนใบลา (สำหรับ Role 5 ครูฝึก / แอดมิน)</label>
+            <input id="st-email" type="email" placeholder="กรอกเฉพาะ Role 5 หัวหน้าชุดครูฝึก หรือแอดมิน เพื่อรับอีเมลแจ้งเตือนเมื่อ นศท. ขอลา" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition">
           </div>
           <div class="sm:col-span-2" id="st-birth-wrap">
             <label class="mb-1.5 block text-xs font-bold text-slate-700 uppercase tracking-wide">รหัสผ่านเริ่มต้น (วันเกิด) <span class="text-rose-500">*</span></label>
@@ -709,16 +709,34 @@
         <button class="h-9 w-9 grid place-items-center rounded-xl bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition shadow-sm" onclick="closeModal('import-modal')">✕</button>
       </div>
       <div class="p-6 overflow-y-auto">
-        <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 p-8 text-center transition hover:bg-slate-100/80 cursor-pointer" onclick="document.getElementById('csv-file').click()">
-          <input type="file" id="csv-file" accept=".csv" class="hidden" onchange="handleCSVUpload(this)">
-          <div class="text-4xl mb-3">📁</div>
-          <p class="font-extrabold text-slate-800 text-lg mb-1">แตะเพื่อเลือกไฟล์ .CSV</p>
-          <p class="text-xs font-semibold text-slate-500">หรือลากไฟล์มาวางที่นี่เพื่อนำเข้าข้อมูล นศท.</p>
+        <!-- Input Method Tabs -->
+        <div class="flex gap-2 mb-4">
+          <button type="button" id="import-mode-paste" class="flex-1 rounded-xl bg-forest-600 py-2.5 text-xs font-bold text-white shadow-sm" onclick="switchImportMode('paste')">📋 วางตารางจาก Excel / ข้อความ (แนะนำ)</button>
+          <button type="button" id="import-mode-file" class="flex-1 rounded-xl bg-slate-100 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-200" onclick="switchImportMode('file')">📁 เลือกไฟล์ .CSV</button>
+        </div>
+
+        <!-- Mode 1: Excel Textarea Paste -->
+        <div id="import-box-paste">
+          <label class="mb-2 block text-xs font-bold text-slate-700">คัดลอกตารางจาก Excel, Google Sheets หรือวางข้อความที่นี่:</label>
+          <textarea id="csv-paste-textarea" rows="5" placeholder="คัดลอกตารางจาก Excel มาวางได้ทันที (ตัวอย่าง):
+6701001	นายสมชาย ใจดี	15/01/2005	1-2345-67890-12-3	1	1	โรงเรียนสมเด็จพิทยาคม
+6701002	นายสมศักดิ์ ขยันดี	20/03/2005	1-9876-54321-09-8	1	1	โรงเรียนสมเด็จพิทยาคม"
+            class="w-full rounded-2xl border border-slate-200 p-3.5 text-xs font-mono focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 outline-none transition" oninput="handleTextareaPasteInput(this.value)"></textarea>
+        </div>
+
+        <!-- Mode 2: File Upload -->
+        <div id="import-box-file" class="hidden">
+          <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 p-8 text-center transition hover:bg-slate-100/80 cursor-pointer" onclick="document.getElementById('csv-file').click()">
+            <input type="file" id="csv-file" accept=".csv" class="hidden" onchange="handleCSVUpload(this)">
+            <div class="text-4xl mb-3">📁</div>
+            <p class="font-extrabold text-slate-800 text-lg mb-1">แตะเพื่อเลือกไฟล์ .CSV</p>
+            <p class="text-xs font-semibold text-slate-500">หรือลากไฟล์มาวางที่นี่เพื่อนำเข้าข้อมูล นศท.</p>
+          </div>
         </div>
 
         <div id="import-preview" class="hidden mt-6">
           <div class="flex items-center justify-between mb-3">
-            <h4 class="font-extrabold text-slate-800 text-sm">ตัวอย่างข้อมูล</h4>
+            <h4 class="font-extrabold text-slate-800 text-sm">ตัวอย่างข้อมูลที่จะนำเข้า</h4>
             <span class="rounded-xl bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-100" id="import-count">พบข้อมูล 0 รายการ</span>
           </div>
           <div class="overflow-x-auto rounded-2xl border border-slate-200" id="import-table">
@@ -1210,12 +1228,16 @@ function toggleStaffFields() {
   var needCompany = (role == '2' || role == '3');
   var needPlatoon = (role == '2');
   var needTrack   = (role == '3');
+  var needEmail   = (role == '5' || role == '6');
 
   document.getElementById('st-company-wrap').style.display = needCompany ? 'block' : 'none';
   document.getElementById('st-platoon-wrap').style.display = needPlatoon ? 'block' : 'none';
 
   var trackWrap = document.getElementById('st-track-wrap');
   if (trackWrap) trackWrap.style.display = needTrack ? 'block' : 'none';
+
+  var emailWrap = document.getElementById('st-email-wrap');
+  if (emailWrap) emailWrap.style.display = needEmail ? 'block' : 'none';
 
   var guide = document.getElementById('st-platoon-guide');
   if (guide) guide.style.display = (role == '2') ? 'block' : 'none';
@@ -1503,8 +1525,36 @@ async function markAbsentAll() {
   }
 }
 
-// ─── CSV Import ───────────────────────────────────────────────
+// ─── CSV / Text Import ─────────────────────────────────────────
 function openImportModal() { openModal('import-modal'); }
+
+function switchImportMode(mode) {
+  var btnPaste = document.getElementById('import-mode-paste');
+  var btnFile  = document.getElementById('import-mode-file');
+  var boxPaste = document.getElementById('import-box-paste');
+  var boxFile  = document.getElementById('import-box-file');
+
+  if (mode === 'paste') {
+    btnPaste.className = 'flex-1 rounded-xl bg-forest-600 py-2.5 text-xs font-bold text-white shadow-sm';
+    btnFile.className  = 'flex-1 rounded-xl bg-slate-100 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-200';
+    boxPaste.classList.remove('hidden');
+    boxFile.classList.add('hidden');
+  } else {
+    btnFile.className  = 'flex-1 rounded-xl bg-forest-600 py-2.5 text-xs font-bold text-white shadow-sm';
+    btnPaste.className = 'flex-1 rounded-xl bg-slate-100 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-200';
+    boxFile.classList.remove('hidden');
+    boxPaste.classList.add('hidden');
+  }
+}
+
+function handleTextareaPasteInput(text) {
+  if (typeof parsePastedStudentText === 'function') {
+    csvStudents = parsePastedStudentText(text);
+  } else {
+    csvStudents = parseStudentCSV(text);
+  }
+  renderImportPreview();
+}
 
 function handleCSVUpload(input) {
   var file = input.files[0];
@@ -1512,21 +1562,30 @@ function handleCSVUpload(input) {
   var reader = new FileReader();
   reader.onload = e => {
     csvStudents = parseStudentCSV(e.target.result);
-    var el = document.getElementById('import-preview');
-    el.classList.remove('hidden');
-    document.getElementById('import-count').textContent = `พบข้อมูล ${csvStudents.length} รายการ`;
-    document.getElementById('import-table').innerHTML = `<table class="w-full text-left text-sm whitespace-nowrap">
-      <thead class="bg-slate-50 border-b border-slate-200"><tr><th class="px-4 py-2 font-bold text-slate-500">รหัส</th><th class="px-4 py-2 font-bold text-slate-500">ชื่อ</th><th class="px-4 py-2 font-bold text-slate-500">โรงเรียน</th><th class="px-4 py-2 font-bold text-slate-500">หมวด</th></tr></thead>
-      <tbody class="divide-y divide-slate-100">${csvStudents.slice(0,5).map(s=>`<tr>
-        <td class="px-4 py-2">${escapeHtml(s['studentId']||s['รหัสนศท']||'')}</td>
-        <td class="px-4 py-2 font-medium text-forest-900">${escapeHtml(s['name']||s['ชื่อ']||'')}</td>
-        <td class="px-4 py-2 text-slate-500">${escapeHtml(s['school']||s['โรงเรียน']||'')}</td>
-        <td class="px-4 py-2 text-slate-500">${escapeHtml(s['platoon']||s['หมวด']||'')}</td>
-      </tr>`).join('')}${csvStudents.length>5?`<tr><td colspan="4" class="px-4 py-3 text-slate-400 text-center italic text-xs bg-slate-50">...และอีก ${csvStudents.length-5} รายการ</td></tr>`:''}</tbody>
-    </table>`;
-    document.getElementById('do-import-btn').disabled = false;
+    renderImportPreview();
   };
   reader.readAsText(file, 'utf-8');
+}
+
+function renderImportPreview() {
+  var el = document.getElementById('import-preview');
+  if (!csvStudents.length) {
+    el.classList.add('hidden');
+    document.getElementById('do-import-btn').disabled = true;
+    return;
+  }
+  el.classList.remove('hidden');
+  document.getElementById('import-count').textContent = `พบข้อมูล ${csvStudents.length} รายการ`;
+  document.getElementById('import-table').innerHTML = `<table class="w-full text-left text-sm whitespace-nowrap">
+    <thead class="bg-slate-50 border-b border-slate-200"><tr><th class="px-4 py-2 font-bold text-slate-500">รหัส</th><th class="px-4 py-2 font-bold text-slate-500">ชื่อ-นามสกุล</th><th class="px-4 py-2 font-bold text-slate-500">สถานศึกษา</th><th class="px-4 py-2 font-bold text-slate-500">ชั้นปี/หมวด</th></tr></thead>
+    <tbody class="divide-y divide-slate-100">${csvStudents.slice(0,5).map(s=>`<tr>
+      <td class="px-4 py-2">${escapeHtml(s['studentId']||s['รหัสนศท']||'')}</td>
+      <td class="px-4 py-2 font-medium text-forest-900">${escapeHtml(s['name']||s['ชื่อ']||'')}</td>
+      <td class="px-4 py-2 text-slate-500">${escapeHtml(s['school']||s['โรงเรียน']||'')}</td>
+      <td class="px-4 py-2 text-slate-500">ปี ${escapeHtml(s['company']||s['year']||s['ชั้นปี']||'1')} / หมวด ${escapeHtml(s['platoon']||s['หมวด']||'1')}</td>
+    </tr>`).join('')}${csvStudents.length>5?`<tr><td colspan="4" class="px-4 py-3 text-slate-400 text-center italic text-xs bg-slate-50">...และอีก ${csvStudents.length-5} รายการ</td></tr>`:''}</tbody>
+  </table>`;
+  document.getElementById('do-import-btn').disabled = false;
 }
 
 async function doImport() {

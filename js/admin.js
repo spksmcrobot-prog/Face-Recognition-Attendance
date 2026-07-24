@@ -82,9 +82,11 @@ async function getSystemStats() {
   };
 }
 
-// ─── Batch Import Students (CSV) ─────────────────────────────
+// ─── Batch Import Students (CSV / Excel Text Paste) ───────────
 function parseStudentCSV(text) {
+  if (text.includes('\t')) return parsePastedStudentText(text);
   const lines = text.trim().split('\n');
+  if (lines.length < 2) return parsePastedStudentText(text);
   const headers = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
   return lines.slice(1).map(line => {
     const values = line.split(',').map(v => v.trim().replace(/"/g,''));
@@ -92,6 +94,67 @@ function parseStudentCSV(text) {
     headers.forEach((h,i) => obj[h] = values[i] || '');
     return obj;
   });
+}
+
+function parsePastedStudentText(text) {
+  if (!text || !text.trim()) return [];
+  const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return [];
+
+  let startIdx = 0;
+  const firstLine = lines[0].toLowerCase();
+  if (firstLine.includes('studentid') || firstLine.includes('รหัส') || firstLine.includes('ชื่อ')) {
+    startIdx = 1;
+  }
+
+  const results = [];
+  for (let i = startIdx; i < lines.length; i++) {
+    const line = lines[i];
+    let parts = [];
+    if (line.includes('\t')) {
+      parts = line.split('\t').map(p => p.trim());
+    } else if (line.includes(',')) {
+      parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+    } else {
+      parts = line.split(/\s+/).map(p => p.trim());
+    }
+
+    if (!parts.length) continue;
+
+    let studentId  = parts[0] || '';
+    let name       = parts[1] || '';
+    let birthdate  = parts[2] || '';
+    let nationalId = parts[3] || '';
+    let year       = parts[4] || '';
+    let platoon    = parts[5] || '';
+    let school     = parts[6] || '';
+
+    // Smart fix when space separation splits first & last name
+    if (parts.length >= 3 && /^\d+$/.test(parts[0]) && !/^\d/.test(parts[1]) && !/^\d/.test(parts[2])) {
+      name       = parts[1] + ' ' + parts[2];
+      birthdate  = parts[3] || '';
+      nationalId = parts[4] || '';
+      year       = parts[5] || '';
+      platoon    = parts[6] || '';
+      school     = parts[7] || '';
+    }
+
+    if (studentId || name) {
+      results.push({
+        studentId:  studentId,
+        name:       name,
+        birthdate:  birthdate || '15/01/2005',
+        nationalId: nationalId || '',
+        company:    year || '1',
+        year:       year || '1',
+        platoon:    platoon || '1',
+        school:     school || '',
+        role:       ROLES.STUDENT
+      });
+    }
+  }
+
+  return results;
 }
 
 async function batchImportStudents(students) {
